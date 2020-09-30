@@ -1,12 +1,19 @@
-const path = require('path');
-
 const config = {
   isProduction: process.env.NODE_ENV === 'production',
   isDebug: !!process.env.DEBUG,
 
   logLevel: process.env.LOG_LEVEL || 'info', // 'error', 'warn', 'info', 'verbose', 'debug', 'silly'
 
-  databaseUri: process.env.MONGODB_URI,
+  databaseUri: process.env.MYSQL_URI,
+  databaseOpts: {
+    dialect: 'mysql',
+
+    pool: {
+      max: 5,
+      min: 0,
+      idle: 10000
+    }
+  },
 
   appKey: process.env.APP_KEY,
 
@@ -52,30 +59,6 @@ const config = {
 
     // disable delaying - full speed until the max limit is reached
     delayMs: 0
-  },
-
-  cache: {
-    urlCacheOptions: {
-      stdTTL: 60,
-      checkperiod: 70,
-      deleteOnExpire: true
-    },
-
-    proxyCacheOptions: {
-      stdTTL: 600 // 10 minutes
-    }
-  },
-
-  mailerConfig: {
-    auth: {
-      api_user: process.env.SENDGRID_USERNAME || undefined,
-      api_key: process.env.SENDGRID_PASSWORD
-    },
-    from: 'info@domain.com',
-    rendererConfig: {
-      viewPath: path.join(__dirname, 'templates/emails/'),
-      extName: '.handlebars'
-    }
   }
 };
 

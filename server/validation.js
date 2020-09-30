@@ -2,7 +2,7 @@ const Joi = require('joi');
 
 const validate = (schema, source) => {
   return function (req, res, next) {
-    if (!source) source = (request, response) => { return request.body; };
+    if (!source) source = (request) => request.body;
 
     Joi.validate(source(req, res), schema, { abortEarly: true }, function (err, validationResult) {
       if (err) {
@@ -10,7 +10,7 @@ const validate = (schema, source) => {
           return detail.message;
         });
 
-        return res.boom.badRequest(details, { success: false });
+        return res.status(400).json({ success: false, details });
       }
 
       req.schema = schema;
@@ -27,8 +27,7 @@ const LoginSchema = {
 const RegisterSchema = {
   email: Joi.string().email().required().label('Email'),
   password: Joi.string().required().label('Password'),
-  confirmation: Joi.string().min(4).valid(Joi.ref('password')).required().options({ language: { any: { allowOnly: 'must match password' } } }).label('Confirmation'),
-  tos: Joi.boolean().required().valid('Y').options({ language: { any: { allowOnly: 'must be accepted' } } }).label('Terms of Service')
+  confirmation: Joi.string().min(4).valid(Joi.ref('password')).required().options({ language: { any: { allowOnly: 'must match password' } } }).label('Confirmation')
 };
 
 const ResetSchema = {
@@ -46,11 +45,26 @@ const VerifySchema = {
   token: Joi.string().required()
 };
 
+const SignalSchema = {
+  ticker: Joi.string().required().label('Ticker'),
+  price: Joi.number().required().label('Price'),
+  commentsAllowed: Joi.boolean().required().label('Comments allowed'),
+  paid: Joi.boolean().required().label('Paid')
+};
+
+const CommentSchema = {
+  text: Joi.string().required().label('Comment'),
+  postId: Joi.string().optional().label('Post'),
+  signalId: Joi.string().optional().label('signal')
+};
+
 module.exports = {
   validate: validate,
   LoginSchema,
   RegisterSchema,
   ResetSchema,
   ResetPasswordSchema,
-  VerifySchema
+  VerifySchema,
+  SignalSchema,
+  CommentSchema
 };

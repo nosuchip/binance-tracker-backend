@@ -5,7 +5,8 @@
     "baseUrl": "./",
     "paths": {
       "@base/*": ["server/*"],
-      "@models/*": ["server/models/*"]
+      "@db/*": ["server/db/*"],
+      "@models/*": ["server/db/models/*"]
     }
   },
   "exclude": [

@@ -32,22 +32,17 @@
     "express": "^4.17.1",
     "express-async-errors": "^3.1.1",
     "express-bearer-token": "^2.4.0",
-    "express-boom": "^3.0.0",
     "express-rate-limit": "^5.0.0",
-    "gridfs-stream": "^1.1.1",
     "joi": "^14.3.1",
     "jsonwebtoken": "^8.5.1",
-    "method-override": "^3.0.0",
     "module-alias": "^2.2.2",
-    "mongoose": "^5.7.11",
-    "node-cache": "^5.0.2",
-    "nodemailer": "^6.3.1",
-    "nodemailer-express-handlebars": "^3.1.0",
-    "nodemailer-sendgrid-transport": "^0.2.0",
-    "socket.io": "^2.3.0",
+    "mysql2": "^2.2.5",
+    "reconnecting-websocket": "^4.4.0",
+    "sequelize": "^6.3.5",
+    "sequelize-cli": "^6.2.0",
     "uuid": "^3.3.3",
     "winston": "^3.2.1",
-    "winston-mongodb": "^5.0.1"
+    "ws": "^7.3.1"
   },
   "devDependencies": {
     "chai": "^4.2.0",
@@ -63,6 +58,7 @@
   },
   "_moduleAliases": {
     "@base": "server",
-    "@models": "server/models"
+    "@db": "server/db",
+    "@models": "server/db/models"
   }
 }
