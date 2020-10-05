@@ -3,7 +3,7 @@ const { sequelize } = require('@db/database');
 const logger = require('@base/logger');
 
 const updateSubscriptions = async (signals) => {
-  const SignalModel = sequelize._.Signal;
+  const SignalModel = sequelize.models.Signal;
   const allSignals = await SignalModel.findAll();
   const tickers = allSignals.map(signal => signal.ticker);
 
