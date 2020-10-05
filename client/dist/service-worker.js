@@ -14,7 +14,7 @@
 importScripts("https://storage.googleapis.com/workbox-cdn/releases/4.3.1/workbox-sw.js");
 
 importScripts(
-  "/precache-manifest.cfa16b6092e004bb1cf4d1008f94ebde.js"
+  "/precache-manifest.ed522d8bb9c807ad47d919bf6863b126.js"
 );
 
 workbox.core.setCacheNameDetails({prefix: "binance-tracker-frontend"});
