@@ -46,10 +46,18 @@ const VerifySchema = {
 };
 
 const SignalSchema = {
+  id: Joi.number().optional().label('ID'),
+
   ticker: Joi.string().required().label('Ticker'),
   price: Joi.number().required().label('Price'),
   commentsAllowed: Joi.boolean().required().label('Comments allowed'),
-  paid: Joi.boolean().required().label('Paid')
+  paid: Joi.boolean().required().label('Paid'),
+
+  status: Joi.string().optional().label('Status'),
+  profitability: Joi.number().optional().label('Profitability'),
+  risk: Joi.string().optional().label('Risk'),
+  term: Joi.string().optional().label('term'),
+  volume: Joi.number().optional().label('Volume')
 };
 
 const CommentSchema = {

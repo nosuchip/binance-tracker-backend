@@ -4,9 +4,13 @@ const config = {
 
   logLevel: process.env.LOG_LEVEL || 'info', // 'error', 'warn', 'info', 'verbose', 'debug', 'silly'
 
+  storeHistory: !!process.env.STORE_HISTORY,
+
   databaseUri: process.env.MYSQL_URI,
   databaseOpts: {
     dialect: 'mysql',
+
+    dialectOptions: { decimalNumbers: true },
 
     pool: {
       max: 5,

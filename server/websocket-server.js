@@ -16,6 +16,12 @@ class WebsocketServer extends EventEmitter {
     return new Date().getTime();
   }
 
+  getClients (clients) {
+    return clients
+      .map(client => typeof client === 'string' ? this.clients[client] : client)
+      .filter(client => !!client);
+  }
+
   deserialize (message) {
     try {
       const { event, payload } = JSON.parse(message);
@@ -41,6 +47,8 @@ class WebsocketServer extends EventEmitter {
     this.socket.on('connection', (ws, req) => {
       ws.clientId = uuid.v4();
       this.clients[ws.clientId] = ws;
+
+      ws.send(this.serialize('connected', { id: ws.clientId }));
 
       this.setupPing(ws);
 
@@ -93,17 +101,20 @@ class WebsocketServer extends EventEmitter {
 
   onMessage (event, payload, ws) {
     this.emit(event, payload, ws, this);
-    this.send('response', { hey: 'ya!', 'received event': event, 'received payload': payload }, ws);
   }
 
-  send (event, data, ws) {
-    if (ws) {
-      ws.send(this.serialize(event, data));
+  send (event, data, client) {
+    [client] = this.getClients([client]);
+
+    if (client) {
+      client.send(this.serialize(event, data));
     }
   }
 
-  async broadcast (event, data) {
-    Object.values(this.clients).forEach(ws => {
+  async broadcast (event, data, clients) {
+    clients = this.getClients(clients || Object.values(this.clients));
+
+    clients.forEach(ws => {
       ws.send(this.serialize(event, data));
     });
   }

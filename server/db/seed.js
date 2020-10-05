@@ -1,12 +1,13 @@
 const { User } = require('@models/user');
 const { Signal } = require('@models/signal');
 const logger = require('@base/logger');
+const { hashPassword } = require('@base/libs/password');
 
 module.exports = async () => {
   const demoUserData = {
     name: 'Demo User',
     email: 'demo@demo.example',
-    password: 'P@ssw0rd',
+    password: await hashPassword('P@ssw0rd'),
     role: 'user',
     confirmedAt: new Date(),
     active: true
@@ -14,7 +15,7 @@ module.exports = async () => {
   const demoAdminData = {
     name: 'Demo Admin',
     email: 'admin@demo.example',
-    password: 'P@ssw0rd',
+    password: await hashPassword('P@ssw0rd'),
     role: 'admin',
     confirmedAt: new Date(),
     active: true

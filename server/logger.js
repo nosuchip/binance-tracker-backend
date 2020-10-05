@@ -21,25 +21,6 @@ const transports = [new winston.transports.Console({
   format: alignedWithColorsAndTime
 })];
 
-if (config.isProduction) {
-  require('winston-mongodb');
-
-  transports.push(new winston.transports.MongoDB({
-    level: 'warn',
-    db: config.databaseUri,
-    collection: 'logs',
-    storeHost: true,
-    decolorize: true,
-    expireAfterSeconds: 2 * 7 * 24 * 60 * 60
-  }));
-} else {
-  transports.push(new winston.transports.File({
-    filename: 'local-dev.log',
-    level: 'debug',
-    format: alignedWithColorsAndTime
-  }));
-}
-
 const logger = winston.createLogger({
   level: config.logLevel,
   transports

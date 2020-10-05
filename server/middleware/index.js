@@ -13,12 +13,8 @@ const userTokenMiddleware = async (req, res, next) => {
   if (!req.token) return next(null);
 
   try {
-    // const blacklistedToken = await BlacklistedToken.findOne({ token: req.token });
-
-    // if (blacklistedToken) return res.status(401).json({ success: false, message: 'Token invalid' });
-
     const decoded = jwt.verify(req.token, config.appKey);
-    req.user = await User.findOne({ id: decoded.userId });
+    req.user = await User.findOne({ where: { id: decoded.userId } });
 
     logger.verbose(`userTokenMiddleware: decoded token: ${JSON.stringify(decoded)}, user: ${JSON.stringify(req.user)}`);
   } catch (error) {
@@ -79,7 +75,7 @@ const compression = compressionFactory({
   }
 });
 
-const staticFileMiddleware = express.static(path.join(__dirname, '../client/dist'));
+const staticFileMiddleware = express.static(path.join(__dirname, '../../client/dist'));
 
 const history = historyFactory({
   disableDotRule: true,

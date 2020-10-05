@@ -17,5 +17,6 @@ async function checkConnection () {
 
 module.exports = {
   sequelize,
+  Sequelize,
   checkConnection
 };

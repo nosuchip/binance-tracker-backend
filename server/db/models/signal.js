@@ -1,5 +1,6 @@
 const { DataTypes, Model } = require('sequelize');
 const { sequelize } = require('../database');
+const { afterCreate, afterUpdate, afterDestroy } = require('@db/hooks/signal-hooks');
 
 class Signal extends Model {
   static empty (overloads = {}) {
@@ -35,17 +36,22 @@ class Signal extends Model {
 Signal.init({
   id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
   status: { type: DataTypes.ENUM('delayed', 'active', 'fired', 'cancelled'), allowNull: false },
-  profitability: { type: DataTypes.DECIMAL(10, 5), allowNull: false },
-  ticker: { type: DataTypes.STRING(20), allowNull: false },
+  profitability: { type: DataTypes.DECIMAL(16, 8), allowNull: false },
+  ticker: { type: DataTypes.STRING(50), allowNull: false },
   risk: { type: DataTypes.ENUM('high', 'medium', 'low'), allowNull: false },
   term: { type: DataTypes.ENUM('short', 'medium', 'long'), allowNull: false },
-  volume: { type: DataTypes.DECIMAL(10, 5), allowNull: false },
+  volume: { type: DataTypes.DECIMAL(16, 8), allowNull: false },
   paid: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false },
   commentsAllowed: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false },
-  price: { type: DataTypes.DECIMAL(10, 5), allowNull: false }
+  price: { type: DataTypes.DECIMAL(16, 8), allowNull: false }
 }, {
   sequelize,
-  modelName: 'Signal'
+  modelName: 'Signal',
+  hooks: {
+    afterCreate,
+    afterUpdate,
+    afterDestroy
+  }
 });
 
 module.exports = {

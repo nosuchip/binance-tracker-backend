@@ -8,7 +8,7 @@ const utils = require('@base/utils');
 
 const router = express.Router();
 
-router.get('/posts/:signalId', async (req, res) => {
+router.get('/posts/signal/:signalId', async (req, res) => {
   const { signalId } = req.params;
   const { page, perPage, offset } = utils.unpackQuery(req);
 

@@ -15,6 +15,7 @@ class BinanceTracker extends EventEmitter {
 
     this.conditions = {};
     this.messageId = 1;
+    this.tickersSubs = [];
 
     this.rws = new ReconnectingWebsocket(uri, [], options);
     this.rws.addEventListener('open', () => {
@@ -48,12 +49,18 @@ class BinanceTracker extends EventEmitter {
       tickers = [tickers];
     }
 
+    tickers = tickers
+      .map((ticker) => ticker.toLowerCase())
+      .filter((ticker) => !this.tickersSubs.includes(ticker));
+
     logger.info(`Binance.subscribeTicker ${JSON.stringify(tickers)}`);
 
     this.send({
       method: 'SUBSCRIBE',
-      params: tickers.map((ticker) => `${ticker.toLowerCase()}@trade`)
+      params: tickers.map((ticker) => `${ticker}@trade`)
     });
+
+    this.tickersSubs.push(...tickers);
   }
 
   unsubscribeTicker (tickers) {
@@ -61,12 +68,18 @@ class BinanceTracker extends EventEmitter {
       tickers = [tickers];
     }
 
+    tickers = tickers
+      .map((ticker) => ticker.toLowerCase())
+      .filter((ticker) => this.tickersSubs.includes(ticker));
+
     logger.info(`Binance.unsubscribeTicker ${JSON.stringify(tickers)}`);
 
     this.send({
       method: 'UNSUBSCRIBE',
-      params: tickers.map((ticker) => `${ticker.toLowerCase()}@aggTrade`)
+      params: tickers.map((ticker) => `${ticker}@aggTrade`)
     });
+
+    this.tickersSubs = this.tickersSubs.filter(ticker => !tickers.includes(ticker));
   }
 
   updateSignals (signals) {

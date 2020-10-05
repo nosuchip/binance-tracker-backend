@@ -29,7 +29,7 @@ const promiseApp = async () => {
     app.disable('x-powered-by');
     app.enable('trust proxy');
 
-    app.use(new RateLimit(config.rateLimitOptions));
+    app.use('/api/', new RateLimit(config.rateLimitOptions));
     app.use(middleware.redirectToHttps);
 
     app.use(bodyParser.json({ limit: '4mb' }));
@@ -39,7 +39,7 @@ const promiseApp = async () => {
     app.use(cors(config.cors));
     app.options('*', cors(config.cors));
 
-    // app.use(middleware.userTokenMiddleware);
+    app.use(middleware.userTokenMiddleware);
 
     app.use(middleware.compression);
     app.use(middleware.staticFileMiddleware);
@@ -87,7 +87,7 @@ async function initialize () {
 
   await promiseRun(server);
 
-  initBinance();
+  await initBinance();
 }
 
 initialize();

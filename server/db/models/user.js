@@ -1,7 +1,8 @@
 const { DataTypes, Model } = require('sequelize');
 const { sequelize } = require('../database');
 
-class User extends Model {}
+class User extends Model {
+}
 
 User.init({
   id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
