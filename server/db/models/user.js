@@ -11,7 +11,7 @@ User.init({
   password: { type: DataTypes.STRING(512), allowNull: false },
   active: { type: DataTypes.BOOLEAN, allowNull: false },
   confirmedAt: { type: DataTypes.DATE, allowNull: true },
-  role: { type: DataTypes.ENUM('user', 'admin'), defaultValue: 'user ' }
+  role: { type: DataTypes.ENUM('user', 'admin', 'paid user'), defaultValue: 'user ' }
 }, {
   sequelize,
   modelName: 'User'
