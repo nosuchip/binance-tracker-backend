@@ -50,7 +50,7 @@ const SignalSchema = {
 
   ticker: Joi.string().required().label('Ticker'),
   price: Joi.number().required().label('Price'),
-  commentsAllowed: Joi.boolean().required().label('Comments allowed'),
+  commentable: Joi.boolean().required().label('Comments allowed'),
   paid: Joi.boolean().required().label('Paid'),
 
   status: Joi.string().optional().label('Status'),

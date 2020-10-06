@@ -6,7 +6,7 @@ module.exports = {
   up: async (queryInterface, Sequelize) => {
     const defaultHashedPassword = await hashPassword('P@ssw0rd');
 
-    await queryInterface.bulkInsert('Users', [
+    return queryInterface.bulkInsert('Users', [
       {
         name: 'Demo User',
         email: 'demo@demo.example',

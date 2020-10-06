@@ -8,12 +8,13 @@ class Signal extends Model {
       status: 'active',
       profitability: 0,
       // ticker: 'BTCUSDT',
+      // title: 'BTC/USDT',
+      type: 'long',
       risk: 'low',
       term: 'long',
       volume: 0,
       paid: false,
-      commentsAllowed: true,
-      // price: 0,
+      commentable: true,
       // userId: admin.id
 
       ...overloads
@@ -38,12 +39,13 @@ Signal.init({
   status: { type: DataTypes.ENUM('delayed', 'active', 'fired', 'cancelled'), allowNull: false },
   profitability: { type: DataTypes.DECIMAL(16, 8), allowNull: false },
   ticker: { type: DataTypes.STRING(50), allowNull: false },
+  title: { type: DataTypes.STRING(50), allowNull: false },
+  type: { type: DataTypes.ENUM('short', 'long'), allowNull: false },
   risk: { type: DataTypes.ENUM('high', 'medium', 'low'), allowNull: false },
   term: { type: DataTypes.ENUM('short', 'medium', 'long'), allowNull: false },
   volume: { type: DataTypes.DECIMAL(16, 8), allowNull: false },
   paid: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false },
-  commentsAllowed: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false },
-  price: { type: DataTypes.DECIMAL(16, 8), allowNull: false }
+  commentable: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false }
 }, {
   sequelize,
   modelName: 'Signal',

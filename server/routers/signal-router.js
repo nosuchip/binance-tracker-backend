@@ -40,7 +40,7 @@ router.get('/signals/:signalId', async (req, res) => {
 });
 
 router.post('/signals', validate(SignalSchema), async (req, res) => {
-  const { ticker, price, commentsAllowed, paid } = req.body;
+  const { ticker, price, commentable, paid } = req.body;
 
   const exists = await Signal.exists(ticker, price);
 
@@ -51,7 +51,7 @@ router.post('/signals', validate(SignalSchema), async (req, res) => {
   const signal = await Signal.create(Signal.empty({
     ticker,
     price,
-    commentsAllowed,
+    commentable,
     paid
   }));
 

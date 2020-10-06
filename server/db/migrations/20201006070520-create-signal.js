@@ -6,12 +6,13 @@ module.exports = {
       status: { type: Sequelize.ENUM('delayed', 'active', 'fired', 'cancelled'), allowNull: false },
       profitability: { type: Sequelize.DECIMAL(16, 8), allowNull: false },
       ticker: { type: Sequelize.STRING(50), allowNull: false },
+      title: { type: Sequelize.STRING(50), allowNull: false },
+      type: { type: Sequelize.ENUM('short', 'long'), allowNull: false },
       risk: { type: Sequelize.ENUM('high', 'medium', 'low'), allowNull: false },
       term: { type: Sequelize.ENUM('short', 'medium', 'long'), allowNull: false },
       volume: { type: Sequelize.DECIMAL(16, 8), allowNull: false },
       paid: { type: Sequelize.BOOLEAN, allowNull: false, defaultValue: false },
-      commentsAllowed: { type: Sequelize.BOOLEAN, allowNull: false, defaultValue: false },
-      price: { type: Sequelize.DECIMAL(16, 8), allowNull: false },
+      commentable: { type: Sequelize.BOOLEAN, allowNull: false, defaultValue: false },
       createdAt: { type: Sequelize.DATE, allowNull: false },
       updatedAt: { type: Sequelize.DATE, allowNull: false }
     }).then(() => queryInterface.addConstraint('Signals', {
