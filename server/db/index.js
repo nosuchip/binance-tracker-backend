@@ -7,15 +7,13 @@ const { Comment } = require('./models/comment');
 
 const { associate } = require('./models/associations');
 
-const seedData = require('./seed');
+// const seedData = require('./seed');
 
 const init = async () => {
   await associate();
-
-  if (process.env.ONE_TIME_INIT) {
-    await sequelize.sync({ force: true });
-    await seedData();
-  }
+  // if (process.env.ONE_TIME_INIT) {
+  //   await seedData();
+  // }
 };
 
 module.exports = {
