@@ -1,7 +1,7 @@
 const express = require('express');
 
-const { Signal } = require('@models/signal');
-const { Comment } = require('@models/comment');
+const { sequelize } = require('@db');
+const { Signal, Comment, EntryPoint, Order } = require('@db');
 
 const { validate, SignalSchema, CommentSchema } = require('../validation');
 const utils = require('@base/utils');
@@ -13,49 +13,122 @@ router.get('/signals', async (req, res) => {
 
   const where = {};
 
-  if (!req.user || !['admin', 'paidUser'].includes(req.user.role)) {
-    where.paid = false;
-  }
+  const unprivilegedUser = !req.user || !['admin', 'paid user'].includes(req.user.role);
 
-  const { count, rows } = await Signal.findAndCountAll(utils.paginate({ where }, { offset, perPage }));
+  // if (unprivilegedUser) {
+  //   where.paid = false;
+  // }
 
-  // TODO: Add list of all available signals for client (it could depends on role and paid status)
-  const availableSignals = [];
+  const query = utils.paginate({ where }, { offset, perPage });
+  let { count, signals } = await Signal.findManyWithRefs(query, {
+    // skipComments: unprivilegedUser,
+    // skipEntryPoints: unprivilegedUser,
+    // skipOrders: unprivilegedUser
+  });
 
-  res.json({ success: true, data: rows, pagination: { page, perPage, total: count }, availableSignals });
+  signals = signals.map(data => ({
+    ...data.signal.get(),
+    comments: unprivilegedUser ? data.comments.map(c => ({})) : data.comments,
+    entryPoints: unprivilegedUser ? [] : data.entryPoints,
+    takeProfitOrders: unprivilegedUser ? [] : data.takeProfitOrders,
+    stopLossOrders: unprivilegedUser ? [] : data.stopLossOrders
+  }));
+
+  res.json({ success: true, data: signals, pagination: { page, perPage, total: count } });
 });
 
 router.get('/signals/:signalId', async (req, res) => {
   const { signalId } = req.params;
 
-  const signal = await Signal.findOne({
+  const { signal, comments, entryPoints, takeProfitOrders, stopLossOrders } = await Signal.findOneWithRefs({
     where: {
       id: signalId
     }
   });
 
-  const comments = await Comment.findAll({ where: { signalId } });
-
-  res.json({ success: true, signal, comments });
+  res.json({
+    success: true,
+    signal: {
+      ...signal.get(),
+      comments,
+      entryPoints,
+      takeProfitOrders,
+      stopLossOrders
+    }
+  });
 });
 
 router.post('/signals', validate(SignalSchema), async (req, res) => {
-  const { ticker, price, commentable, paid } = req.body;
+  const {
+    // comments = [],
+    entryPoints = [],
+    takeProfitOrders = [],
+    stopLossOrders = [],
+    ...rest
+  } = req.body;
 
-  const exists = await Signal.exists(ticker, price);
-
-  if (exists) {
-    return res.status(409).json({ success: false, error: 'Signal already exists' });
-  }
-
-  const signal = await Signal.create(Signal.empty({
+  const {
     ticker,
+    title,
     price,
     commentable,
-    paid
+    paid,
+    type,
+    risk,
+    term,
+    volume,
+    date,
+    post,
+    status,
+    profitability
+  } = rest;
+
+  const created = await Signal.create(Signal.empty({
+    userId: req.user.id,
+    ticker,
+    title: title || ticker,
+    price,
+    commentable,
+    paid,
+    type,
+    risk,
+    term,
+    volume,
+    post,
+    status,
+    profitability,
+    createdAt: date
   }));
 
-  res.json({ success: true, signal });
+  await EntryPoint.bulkCreate(entryPoints.map(ep => ({
+    signalId: created.id,
+    price: ep.price,
+    comment: ep.comment
+  })));
+
+  await Order.bulkCreate([...takeProfitOrders, ...stopLossOrders].map(order => ({
+    signalId: created.id,
+    price: order.price,
+    volume: order.volume,
+    comment: order.comment
+  })));
+
+  const signal = await Signal.findOneWithRefs({
+    where: {
+      id: created.id
+    }
+  });
+
+  res.json({
+    success: true,
+    signal: {
+      ...signal.signal.get(),
+      comments: signal.comments,
+      entryPoints: signal.entryPoints,
+      takeProfitOrders: signal.takeProfitOrders,
+      stopLossOrders: signal.stopLossOrders
+    }
+  });
 });
 
 router.put('/signals/:signalId', validate(SignalSchema), async (req, res) => {
@@ -69,15 +142,50 @@ router.put('/signals/:signalId', validate(SignalSchema), async (req, res) => {
 
   const payload = {};
 
-  Object.entries(req.body).forEach(([key, value]) => {
+  const {
+    // comments = [],
+    entryPoints = [],
+    takeProfitOrders = [],
+    stopLossOrders = [],
+    ...rest
+  } = req.body;
+
+  Object.entries(rest).forEach(([key, value]) => {
     if (typeof value !== 'undefined') {
       payload[key] = value;
     }
   });
 
-  const result = await signal.update(payload);
+  const transaction = await sequelize.transaction();
 
-  res.json({ success: true, signal, result });
+  await Promise.all([
+    Signal.update(payload, { where: { id: signalId } }, { transaction }),
+
+    EntryPoint
+      .destroy({ where: { signalId } }, { transaction })
+      .then(() => EntryPoint.bulkCreate(entryPoints), { transaction }),
+
+    Order
+      .destroy({ where: { signalId } }, { transaction })
+      .then(() => Order.bulkCreate([...takeProfitOrders, ...stopLossOrders]), { transaction })
+  ]);
+
+  const updated = await Signal.findOneWithRefs({
+    where: {
+      id: signalId
+    }
+  });
+
+  res.json({
+    success: true,
+    signal: {
+      ...updated.signal.get(),
+      comments: updated.comments,
+      entryPoints: updated.entryPoints,
+      takeProfitOrders: updated.takeProfitOrders,
+      stopLossOrders: updated.stopLossOrders
+    }
+  });
 });
 
 router.delete('/signals/:signalId', async (req, res) => {

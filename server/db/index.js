@@ -1,19 +1,19 @@
 const { sequelize, Sequelize, checkConnection } = require('./database');
 
 const { User } = require('./models/user');
-const { Signal } = require('./models/signal');
+const { Signal, SignalStatus } = require('./models/signal');
 const { Post } = require('./models/post');
 const { Comment } = require('./models/comment');
+const { EntryPoint } = require('./models/entrypoint');
+const { Order } = require('./models/order');
+
+// const { withCache } = require('./cache');
 
 const { associate } = require('./models/associations');
 
-// const seedData = require('./seed');
-
 const init = async () => {
   await associate();
-  // if (process.env.ONE_TIME_INIT) {
-  //   await seedData();
-  // }
+  // await sequelize.sync({ force: true });
 };
 
 module.exports = {
@@ -21,10 +21,21 @@ module.exports = {
   Sequelize,
   checkConnection,
 
+  // User: withCache(User),
+  // Signal: withCache(Signal),
+  // Post: withCache(Post),
+  // Comment: withCache(Comment),
+  // EntryPoint: withCache(EntryPoint),
+  // Order: withCache(Order),
+
   User,
   Signal,
   Post,
   Comment,
+  EntryPoint,
+  Order,
+
+  SignalStatus,
 
   init
 };

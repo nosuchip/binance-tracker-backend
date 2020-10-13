@@ -2,12 +2,38 @@ const { User } = require('./user');
 const { Signal } = require('./signal');
 const { Post } = require('./post');
 const { Comment } = require('./comment');
+const { EntryPoint } = require('./entrypoint');
+const { Order } = require('./order');
 
 const associate = async () => {
   Signal.belongsTo(User, {
     onDelete: 'SET NULL',
     foreignKey: {
       name: 'userId',
+      allowNull: true
+    }
+  });
+
+  Signal.hasMany(EntryPoint, {
+    onDelete: 'CASCADE',
+    foreignKey: {
+      name: 'signalId',
+      allowNull: false
+    }
+  });
+
+  Signal.hasMany(Order, {
+    onDelete: 'CASCADE',
+    foreignKey: {
+      name: 'signalId',
+      allowNull: false
+    }
+  });
+
+  Signal.hasMany(Comment, {
+    onDelete: 'CASCADE',
+    foreignKey: {
+      name: 'signalId',
       allowNull: true
     }
   });
@@ -34,13 +60,6 @@ const associate = async () => {
     foreignKey: {
       name: 'userId',
       allowNull: false
-    }
-  });
-
-  Comment.belongsTo(Signal, {
-    as: 'signal',
-    foreignKey: {
-      name: 'signalId'
     }
   });
 };

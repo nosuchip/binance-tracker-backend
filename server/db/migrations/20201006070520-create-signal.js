@@ -3,7 +3,7 @@ module.exports = {
     return queryInterface.createTable('Signals', {
       id: { type: Sequelize.INTEGER, primaryKey: true, autoIncrement: true, allowNull: false },
       userId: { type: Sequelize.INTEGER, allowNull: true },
-      status: { type: Sequelize.ENUM('delayed', 'active', 'fired', 'cancelled'), allowNull: false },
+      status: { type: Sequelize.ENUM('delayed', 'active', 'finished', 'cancelled'), allowNull: false },
       profitability: { type: Sequelize.DECIMAL(16, 8), allowNull: false },
       ticker: { type: Sequelize.STRING(50), allowNull: false },
       title: { type: Sequelize.STRING(50), allowNull: false },
@@ -13,6 +13,8 @@ module.exports = {
       volume: { type: Sequelize.DECIMAL(16, 8), allowNull: false },
       paid: { type: Sequelize.BOOLEAN, allowNull: false, defaultValue: false },
       commentable: { type: Sequelize.BOOLEAN, allowNull: false, defaultValue: false },
+      price: { type: Sequelize.DECIMAL(16, 8), allowNull: true },
+      remaining: { type: Sequelize.DECIMAL(4, 3), allowNull: false },
       createdAt: { type: Sequelize.DATE, allowNull: false },
       updatedAt: { type: Sequelize.DATE, allowNull: false }
     }).then(() => queryInterface.addConstraint('Signals', {

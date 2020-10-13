@@ -2,8 +2,7 @@ const { EventEmitter } = require('events');
 const ReconnectingWebsocket = require('reconnecting-websocket');
 const logger = require('./logger');
 const WebSocket = require('ws');
-
-const BINANCE_WS_URI = 'wss://stream.binance.com:9443/ws';
+const config = require('./config');
 
 class BinanceTracker extends EventEmitter {
   constructor (uri) {
@@ -115,4 +114,4 @@ class BinanceTracker extends EventEmitter {
   }
 }
 
-module.exports = new BinanceTracker(BINANCE_WS_URI);
+module.exports = new BinanceTracker(config.binanceUri);

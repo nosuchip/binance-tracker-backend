@@ -58,8 +58,17 @@ const paginate = (query, opts = {}) => {
   };
 };
 
+const arrayToDict = (arr, key) => {
+  return arr.reduce((acc, item) => {
+    const itemKey = item[key].toString ? item[key].toString() : item[key];
+    acc[itemKey] = item;
+    return acc;
+  }, {});
+};
+
 module.exports = exports = {
   CustomError,
   unpackQuery,
-  paginate
+  paginate,
+  arrayToDict
 };

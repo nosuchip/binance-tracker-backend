@@ -7,6 +7,7 @@ const config = require('./config');
 
 const { decode } = require('@base/libs/token');
 const { isPaid } = require('@base/libs/user');
+const { updateSignals, handleDataFrame } = require('@base/libs/level-checker');
 
 const SPARKLINE_LENGTH = 30;
 
@@ -80,62 +81,63 @@ const signalsMiddleware = (fn) => {
   };
 };
 
-const handleUpdateSparkline = function (ticker, price, timestamp) {
-  let spark = sparklineRooms[ticker];
+// const handleUpdateSparkline = function (ticker, price, timestamp) {
+//   let spark = sparklineRooms[ticker];
 
-  if (!spark) {
-    sparklineRooms[ticker] = { sparkline: [], members: [], timestamp };
-    spark = sparklineRooms[ticker];
-  }
+//   if (!spark) {
+//     sparklineRooms[ticker] = { sparkline: [], members: [], timestamp };
+//     spark = sparklineRooms[ticker];
+//   }
 
-  if (spark.sparkline.length === SPARKLINE_LENGTH) {
-    spark.sparkline.shift();
-  }
+//   if (spark.sparkline.length === SPARKLINE_LENGTH) {
+//     spark.sparkline.shift();
+//   }
 
-  spark.sparkline.push(parseFloat(price));
-  spark.timestamp = timestamp;
+//   spark.sparkline.push(parseFloat(price));
+//   spark.timestamp = timestamp;
 
-  logger.debug(`Sparkline updte for ticker ${ticker}, notifying member ${JSON.stringify(spark.members)}, sparkline: ${JSON.stringify(spark.sparkline)}`);
+//   logger.debug(`Sparkline updte for ticker ${ticker}, notifying member ${JSON.stringify(spark.members)}, sparkline: ${JSON.stringify(spark.sparkline)}`);
 
-  serverWs.broadcast('sparkline', { sparkline: spark.sparkline, ticker }, spark.members);
-};
+//   serverWs.broadcast('sparkline', { sparkline: spark.sparkline, ticker }, spark.members);
+// };
 
-const handleTradeMessage = function (message) {
-  const { s: ticker, p: price, T: timestamp } = message;
-  const conds = this.conditions[ticker] || [];
+// const handleTradeMessage = function (message) {
+//   const { s: ticker, p: price, T: timestamp } = message;
 
-  logger.debug(`Binance.handleMessage for ticker ${ticker}, price ${price}`);
+//   const conds = this.conditions[ticker] || [];
 
-  handleUpdateSparkline(ticker, price, timestamp);
+//   logger.debug(`Binance.handleMessage for ticker ${ticker}, price ${price}`);
 
-  if (config.storeHistory) {
-    History.createFromMessage(message);
-  }
+//   handleUpdateSparkline(ticker, price, timestamp);
 
-  for (const condition of conds) {
-    const signal = condition({ ticker, price: parseFloat(price) });
+//   if (config.storeHistory) {
+//     History.createFromMessage(message);
+//   }
 
-    if (signal) {
-      const { status, ...rest } = signal;
-      const payload = { id: signal.id, signal: rest, status, ticker, price: parseFloat(price) };
+//   for (const condition of conds) {
+//     const signal = condition({ ticker, price: parseFloat(price) });
 
-      const cached = tradeSignalCache[signal.id];
+//     if (signal) {
+//       const { status, ...rest } = signal;
+//       const payload = { id: signal.id, signal: rest, status, ticker, price: parseFloat(price) };
 
-      if (cached && cached.status === payload.status) {
-        logger.debug(`handleTradeMessage:: skip 'signal' emitting because cache status was the same "${status}"`);
-        continue;
-      }
+//       const cached = tradeSignalCache[signal.id];
 
-      tradeSignalCache[signal.id] = payload;
+//       if (cached && cached.status === payload.status) {
+//         logger.debug(`handleTradeMessage:: skip 'signal' emitting because cache status was the same "${status}"`);
+//         continue;
+//       }
 
-      logger.verbose(`handleTradeMessage:: broadcasting 'signal' to clients with payload ${JSON.stringify(payload)}`);
+//       tradeSignalCache[signal.id] = payload;
 
-      const clients = _.get(signalsRooms[signal.id], 'members', []);
+//       logger.verbose(`handleTradeMessage:: broadcasting 'signal' to clients with payload ${JSON.stringify(payload)}`);
 
-      serverWs.broadcast('signal', payload, clients);
-    }
-  }
-};
+//       const clients = _.get(signalsRooms[signal.id], 'members', []);
+
+//       serverWs.broadcast('signal', payload, clients);
+//     }
+//   }
+// };
 
 const handleClientSubscribeSignals = signalsMiddleware((userSignals, _payload, client) => {
   userSignals.forEach(signal => {
@@ -192,13 +194,16 @@ const handleClientUnsubscribeSparklines = signalsMiddleware((userSignals, _paylo
 });
 
 module.exports = async () => {
-  binanceWs.on('trade', handleTradeMessage.bind(binanceWs));
+  // binanceWs.on('trade', handleTradeMessage.bind(binanceWs));
+  binanceWs.on('trade', handleDataFrame);
 
   const signals = await sequelize.query('SELECT id, ticker, price FROM Signals', { raw: true, type: Sequelize.QueryTypes.SELECT });
   const tickers = Array.from(new Set(signals.map(signal => signal.ticker)));
 
+  await updateSignals();
   binanceWs.subscribeTicker(tickers);
-  binanceWs.updateSignals(signals);
+
+  // binanceWs.updateSignals(signals);
 
   serverWs.on('subscribe_signals', handleClientSubscribeSignals);
   serverWs.on('unsubscribe_signals', handleClientUnsubscribeSignals);

@@ -1,8 +1,7 @@
 const { DataTypes, Model } = require('sequelize');
 const { sequelize } = require('../database');
 
-class EntryPoint extends Model {
-};
+class EntryPoint extends Model {};
 
 EntryPoint.init({
   id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true, allowNull: false },

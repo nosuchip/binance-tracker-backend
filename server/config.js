@@ -6,6 +6,8 @@ const config = {
 
   storeHistory: !!process.env.STORE_HISTORY,
 
+  binanceUri: process.env.BINANCE_WS_URI,
+
   databaseUri: process.env.MYSQL_URI,
   databaseOpts: {
     dialect: 'mysql',

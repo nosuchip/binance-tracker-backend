@@ -25,6 +25,7 @@ module.exports = {
       paid: false,
       commentable: true,
       userId: adminId,
+      remaining: 1.0,
       createdAt: new Date(),
       updatedAt: new Date()
     }, {
@@ -39,6 +40,7 @@ module.exports = {
       paid: false,
       commentable: true,
       userId: adminId,
+      remaining: 1.0,
       createdAt: new Date(),
       updatedAt: new Date()
     }, {
@@ -53,6 +55,7 @@ module.exports = {
       paid: false,
       commentable: true,
       userId: adminId,
+      remaining: 1.0,
       createdAt: new Date(),
       updatedAt: new Date()
     }]);

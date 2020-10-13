@@ -73,7 +73,7 @@ class WebsocketServer extends EventEmitter {
         return;
       }
 
-      logger.debug(`PING to ${ws.clientId}`);
+      logger.silly(`PING to ${ws.clientId}`);
       this.pingpong[ws.clientId] = this.now();
       ws.ping('PING');
     }, 5000);
@@ -88,7 +88,7 @@ class WebsocketServer extends EventEmitter {
 
   onPong (ws, data) {
     const timeout = this.now() - this.pingpong[ws.clientId];
-    logger.debug(`PONG from ${ws.clientId} after ${timeout}ms with data ${data}`);
+    logger.silly(`PONG from ${ws.clientId} after ${timeout}ms with data ${data}`);
     this.pingpong[ws.clientId] = null;
   }
 

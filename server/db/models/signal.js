@@ -2,6 +2,13 @@ const { DataTypes, Model } = require('sequelize');
 const { sequelize } = require('../database');
 const { afterCreate, afterUpdate, afterDestroy } = require('@db/hooks/signal-hooks');
 
+const SignalStatus = {
+  Delayed: 'delayed',
+  Active: 'active',
+  Finished: 'finished',
+  Cancelled: 'cancelled'
+};
+
 class Signal extends Model {
   static empty (overloads = {}) {
     return {
@@ -9,34 +16,70 @@ class Signal extends Model {
       profitability: 0,
       // ticker: 'BTCUSDT',
       // title: 'BTC/USDT',
-      type: 'long',
+      // type: 'long',
       risk: 'low',
       term: 'long',
       volume: 0,
       paid: false,
       commentable: true,
       // userId: admin.id
+      remaining: overloads.remaining || 1.0,
 
       ...overloads
     };
   }
 
-  static async exists (ticker, price, overloads = {}) {
-    const count = await Signal.count({
-      where: {
-        ticker,
-        price,
-        ...overloads
-      }
-    });
+  static async findOneWithRefs (query) {
+    const signal = await Signal.findOne(query);
+    const comments = await signal.getComments();
+    const entryPoints = await signal.getEntryPoints();
+    const orders = await signal.getOrders();
 
-    return count !== 0;
+    const takeProfitOrders = orders.filter(order => order.type === 'take profit');
+    const stopLossOrders = orders.filter(order => order.type === 'stop loss');
+
+    return {
+      signal,
+      comments,
+      entryPoints,
+      orders,
+      takeProfitOrders,
+      stopLossOrders
+    };
+  }
+
+  static async findManyWithRefs (query, opts = {}) {
+    const { skipComments, skipEntryPoints, skipOrders } = opts;
+
+    const { count, rows: signals } = await Signal.findAndCountAll(query);
+
+    const results = await Promise.all(
+      signals.map(signal => Promise.all([
+        skipComments ? [] : signal.getComments(),
+        skipEntryPoints ? [] : signal.getEntryPoints(),
+        skipOrders ? [] : signal.getOrders()
+      ]).then(([comments, entryPoints, orders]) => {
+        const takeProfitOrders = orders.filter(order => order.type === 'take profit');
+        const stopLossOrders = orders.filter(order => order.type === 'stop loss');
+
+        return { signal, comments, entryPoints, orders, takeProfitOrders, stopLossOrders };
+      }))
+    );
+
+    return { count, signals: results };
+  }
+
+  static async activateMany (signalPriceList) {
+    return Promise.all(signalPriceList.map(({ id, price }) => Signal.update(
+      { status: SignalStatus.Active, price },
+      { where: { status: SignalStatus.Delayed, id } }
+    )));
   }
 }
 
 Signal.init({
   id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
-  status: { type: DataTypes.ENUM('delayed', 'active', 'fired', 'cancelled'), allowNull: false },
+  status: { type: DataTypes.ENUM(Object.values(SignalStatus)), allowNull: false },
   profitability: { type: DataTypes.DECIMAL(16, 8), allowNull: false },
   ticker: { type: DataTypes.STRING(50), allowNull: false },
   title: { type: DataTypes.STRING(50), allowNull: false },
@@ -45,7 +88,10 @@ Signal.init({
   term: { type: DataTypes.ENUM('short', 'medium', 'long'), allowNull: false },
   volume: { type: DataTypes.DECIMAL(16, 8), allowNull: false },
   paid: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false },
-  commentable: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false }
+  commentable: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false },
+  price: { type: DataTypes.DECIMAL(16, 8), allowNull: true },
+  post: { type: DataTypes.STRING(1024), allowNull: true },
+  remaining: { type: DataTypes.DECIMAL(4, 3), allowNull: false }
 }, {
   sequelize,
   modelName: 'Signal',
@@ -57,5 +103,6 @@ Signal.init({
 });
 
 module.exports = {
-  Signal
+  Signal,
+  SignalStatus
 };

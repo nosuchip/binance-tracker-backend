@@ -7,6 +7,8 @@ module.exports = {
       volume: { type: Sequelize.DECIMAL(4, 3), allowNull: false },
       comment: { type: Sequelize.STRING(256), allowNull: true },
       type: { type: Sequelize.ENUM('take profit', 'stop loss') },
+      closed: { type: Sequelize.BOOLEAN, allowNull: false, defaultValue: false },
+      closedVolume: { type: Sequelize.DECIMAL(4, 3), allowNull: true },
       createdAt: { allowNull: false, type: Sequelize.DATE },
       updatedAt: { allowNull: false, type: Sequelize.DATE }
     }).then(() => queryInterface.addConstraint('Orders', {
