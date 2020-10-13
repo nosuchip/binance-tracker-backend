@@ -19,6 +19,8 @@ class BinanceTracker extends EventEmitter {
     this.rws = new ReconnectingWebsocket(uri, [], options);
     this.rws.addEventListener('open', () => {
       logger.info('BinanceTracker socket connected');
+
+      this.emit('open');
     });
 
     this.rws.addEventListener('message', ({ data }) => {
@@ -79,38 +81,6 @@ class BinanceTracker extends EventEmitter {
     });
 
     this.tickersSubs = this.tickersSubs.filter(ticker => !tickers.includes(ticker));
-  }
-
-  updateSignals (signals) {
-    const conditions = {};
-
-    logger.debug(`Binance.updateSignals ${JSON.stringify(signals)}`);
-
-    signals.forEach((signal) => {
-      if (!signal.id) {
-        return;
-      }
-
-      if (!conditions[signal.ticker]) {
-        conditions[signal.ticker] = [];
-      }
-
-      const cond = ({ price }) => {
-        if (price > signal.price) {
-          return { ...signal, status: 'above' };
-        }
-
-        if (price < signal.price) {
-          return { ...signal, status: 'below' };
-        }
-
-        return null;
-      };
-
-      conditions[signal.ticker].push(cond);
-    });
-
-    this.conditions = conditions;
   }
 }
 

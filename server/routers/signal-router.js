@@ -110,7 +110,8 @@ router.post('/signals', validate(SignalSchema), async (req, res) => {
     signalId: created.id,
     price: order.price,
     volume: order.volume,
-    comment: order.comment
+    comment: order.comment,
+    type: order.type
   })));
 
   const signal = await Signal.findOneWithRefs({

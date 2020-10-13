@@ -90,6 +90,7 @@ Signal.init({
   paid: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false },
   commentable: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false },
   price: { type: DataTypes.DECIMAL(16, 8), allowNull: true },
+  lastPrice: { type: DataTypes.DECIMAL(16, 8), allowNull: true },
   post: { type: DataTypes.STRING(1024), allowNull: true },
   remaining: { type: DataTypes.DECIMAL(4, 3), allowNull: false }
 }, {

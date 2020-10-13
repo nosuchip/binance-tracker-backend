@@ -81,64 +81,6 @@ const signalsMiddleware = (fn) => {
   };
 };
 
-// const handleUpdateSparkline = function (ticker, price, timestamp) {
-//   let spark = sparklineRooms[ticker];
-
-//   if (!spark) {
-//     sparklineRooms[ticker] = { sparkline: [], members: [], timestamp };
-//     spark = sparklineRooms[ticker];
-//   }
-
-//   if (spark.sparkline.length === SPARKLINE_LENGTH) {
-//     spark.sparkline.shift();
-//   }
-
-//   spark.sparkline.push(parseFloat(price));
-//   spark.timestamp = timestamp;
-
-//   logger.debug(`Sparkline updte for ticker ${ticker}, notifying member ${JSON.stringify(spark.members)}, sparkline: ${JSON.stringify(spark.sparkline)}`);
-
-//   serverWs.broadcast('sparkline', { sparkline: spark.sparkline, ticker }, spark.members);
-// };
-
-// const handleTradeMessage = function (message) {
-//   const { s: ticker, p: price, T: timestamp } = message;
-
-//   const conds = this.conditions[ticker] || [];
-
-//   logger.debug(`Binance.handleMessage for ticker ${ticker}, price ${price}`);
-
-//   handleUpdateSparkline(ticker, price, timestamp);
-
-//   if (config.storeHistory) {
-//     History.createFromMessage(message);
-//   }
-
-//   for (const condition of conds) {
-//     const signal = condition({ ticker, price: parseFloat(price) });
-
-//     if (signal) {
-//       const { status, ...rest } = signal;
-//       const payload = { id: signal.id, signal: rest, status, ticker, price: parseFloat(price) };
-
-//       const cached = tradeSignalCache[signal.id];
-
-//       if (cached && cached.status === payload.status) {
-//         logger.debug(`handleTradeMessage:: skip 'signal' emitting because cache status was the same "${status}"`);
-//         continue;
-//       }
-
-//       tradeSignalCache[signal.id] = payload;
-
-//       logger.verbose(`handleTradeMessage:: broadcasting 'signal' to clients with payload ${JSON.stringify(payload)}`);
-
-//       const clients = _.get(signalsRooms[signal.id], 'members', []);
-
-//       serverWs.broadcast('signal', payload, clients);
-//     }
-//   }
-// };
-
 const handleClientSubscribeSignals = signalsMiddleware((userSignals, _payload, client) => {
   userSignals.forEach(signal => {
     if (!signalsRooms[signal.id]) {
@@ -194,7 +136,7 @@ const handleClientUnsubscribeSparklines = signalsMiddleware((userSignals, _paylo
 });
 
 module.exports = async () => {
-  // binanceWs.on('trade', handleTradeMessage.bind(binanceWs));
+  binanceWs.on('open', () => updateSignals());
   binanceWs.on('trade', handleDataFrame);
 
   const signals = await sequelize.query('SELECT id, ticker, price FROM Signals', { raw: true, type: Sequelize.QueryTypes.SELECT });

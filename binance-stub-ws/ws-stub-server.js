@@ -1,4 +1,5 @@
 const WebSocket = require('ws');
+const _ = require('lodash');
 const csv = require('csv-parser');
 const fs = require('fs');
 
@@ -19,62 +20,40 @@ const keypress = async () => {
 
 const timestamp = () => Math.round(new Date().getTime() / 1000);
 
-var data = [
-  ['EOS/BTC', 0.0002632, ''],
-  ['EOS/BTC', 0.0002603, ''],
-  ['EOS/BTC', 0.0002644, 'Вход 2'],
-  ['EOS/BTC', 0.0002995, ''],
-  ['EOS/BTC', 0.0003022, ''],
-  ['EOS/BTC', 0.0002968, ''],
-  ['EOS/BTC', 0.0002678, ''],
-  ['EOS/BTC', 0.0003036, ''],
-  ['EOS/BTC', 0.000306, ' TP1'],
-  ['EOS/BTC', 0.0002902, ''],
-  ['EOS/BTC', 0.0003022, ''],
-  ['EOS/BTC', 0.0003082, ''],
-  ['EOS/BTC', 0.000246, ''],
-  ['EOS/BTC', 0.0002946, ''],
-  ['EOS/BTC', 0.000236, 'SL1'],
-  ['EOS/BTC', 0.0002538, ''],
-  ['EOS/BTC', 0.0002853, ''],
-  ['EOS/BTC', 0.0002421, ''],
-  ['EOS/BTC', 0.0002433, ''],
-  ['EOS/BTC', 0.0002242, ''],
-  ['EOS/BTC', 0.0002404, ''],
-  ['EOS/BTC', 0.000224, ''],
-  ['EOS/BTC', 0.0002818, ''],
-  ['EOS/BTC', 0.0002441, ''],
-  ['EOS/BTC', 0.0002353, ''],
-  ['EOS/BTC', 0.0002692, ''],
-  ['EOS/BTC', 0.0002743, ''],
-  ['EOS/BTC', 0.0002544, ''],
-  ['EOS/BTC', 0.0003127, ''],
-  ['EOS/BTC', 0.0003022, ''],
-  ['EOS/BTC', 0.0003199, 'TP2']
-];
+var data = [];
 
 const parseArgs = async () => {
-  const csvFile = process.argv[2];
+  const csvFiles = process.argv.slice(2, process.argv.length);
 
-  if (!csvFile) {
+  if (!csvFiles.length) {
     return;
   }
 
-  const results = [];
+  const promises = csvFiles.map(csvFile => new Promise((resolve, reject) => {
+    const results = [];
 
-  return new Promise((resolve, reject) => {
+    console.log(`Loading CSV data file ${csvFile}`);
+
     fs.createReadStream(csvFile)
       .pipe(csv({
         headers: ['ticker', 'price', 'comment'],
         skipLines: 1
       }))
-      .on('data', (data) => results.push(Object.values(data)))
+      .on('data', (data) => {
+        if (!data.ticker.startsWith('-')) {
+          results.push(Object.values(data));
+        }
+      })
       .on('error', reject)
       .on('end', () => {
-        data = results;
         return resolve(results);
       });
-  });
+  }));
+
+  const results = await Promise.all(promises);
+
+  results.forEach(res => data.push(...res));
+  _.shuffle(data);
 };
 
 const run = async () => {
