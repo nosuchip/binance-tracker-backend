@@ -3,7 +3,6 @@ const winston = require('winston');
 const config = require('./config');
 
 const alignedWithColorsAndTime = winston.format.combine(
-  winston.format.colorize({ all: true }),
   winston.format.timestamp(),
   winston.format.align(),
   winston.format.printf((info) => {
