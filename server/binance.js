@@ -7,6 +7,7 @@ const logger = require('@base/logger');
 const { decode } = require('@base/libs/token');
 const { isPaid } = require('@base/libs/user');
 const { reloadSignalsFromDb, handleDataFrame, setWS } = require('@base/libs/level-checker');
+const { eventbus, EVENT_RELOAD_SIGNALS } = require('./libs/eventbus');
 
 /*
   {
@@ -139,19 +140,23 @@ module.exports = async () => {
 
   setWS({ sendSignal, sendSignals, sendSparkline });
 
+  eventbus.on(EVENT_RELOAD_SIGNALS, async () => {
+    logger.info('Got eventbus EVENT_RELOAD_SIGNALS event');
+    reloadSignalsFromDb();
+  });
+
   binanceWs.on('open', () => reloadSignalsFromDb());
   binanceWs.on('trade', (message) => handleDataFrame(message));
 
   const signals = await sequelize.query('SELECT id, ticker, price FROM Signals', { raw: true, type: Sequelize.QueryTypes.SELECT });
   const tickers = Array.from(new Set(signals.map(signal => signal.ticker)));
 
-  await reloadSignalsFromDb();
   binanceWs.subscribeTicker(tickers);
-
-  // binanceWs.reloadSignalsFromDb(signals);
 
   serverWs.on('subscribe_signals', handleClientSubscribeSignals);
   serverWs.on('unsubscribe_signals', handleClientUnsubscribeSignals);
   serverWs.on('subscribe_sparklines', handleClientSubscribeSparklines);
   serverWs.on('unsubscribe_sparklines', handleClientUnsubscribeSparklines);
+
+  eventbus.emit(EVENT_RELOAD_SIGNALS);
 };

@@ -1,7 +1,7 @@
 const binanceWS = require('@base/websocket-binance');
 const { sequelize } = require('@db/database');
 const logger = require('@base/logger');
-const { reloadSignalsFromDb } = require('@base/libs/level-checker');
+const { eventbus, EVENT_RELOAD_SIGNALS } = require('@base/libs/eventbus');
 
 const updateSubscriptions = async (signals) => {
   const SignalModel = sequelize.models.Signal;
@@ -19,7 +19,7 @@ const updateSubscriptions = async (signals) => {
   logger.info(`updateSubscriptions: Subscribing to added tickers: ${JSON.stringify(tickersToSubscribe)}`);
   binanceWS.subscribeTicker(tickersToSubscribe);
 
-  await reloadSignalsFromDb();
+  eventbus.emit(EVENT_RELOAD_SIGNALS);
 };
 
 const afterCreate = async (_signal) => {

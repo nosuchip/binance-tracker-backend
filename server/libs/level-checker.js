@@ -2,6 +2,7 @@ const _ = require('lodash');
 const { Signal, Order, History, SignalStatus, Sequelize } = require('@base/db');
 const logger = require('@base/logger');
 const config = require('@base/config');
+const { eventbus } = require('./eventbus');
 
 const ws = {
   sendSignal: null,
