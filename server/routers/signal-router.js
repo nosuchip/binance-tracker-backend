@@ -260,7 +260,7 @@ router.post('/signals/bulk', validate(BulkSignalSchema), async (req, res) => {
       volume,
       post,
       status,
-      profitability,
+      profitability: profitability || 0,
       createdAt: date
     }));
 
