@@ -3,7 +3,7 @@ const express = require('express');
 const { sequelize } = require('@db');
 const { Signal, Comment, EntryPoint, Order, Sequelize } = require('@db');
 
-const { validate, SignalSchema, CommentSchema } = require('../validation');
+const { validate, SignalSchema, BulkSignalSchema, CommentSchema } = require('../validation');
 const utils = require('@base/utils');
 
 const router = express.Router();
@@ -216,6 +216,75 @@ router.post('/signals/:signalId/comment', validate(CommentSchema), async (req, r
   });
 
   res.json({ success: true, comment });
+});
+
+router.post('/signals/bulk', validate(BulkSignalSchema), async (req, res) => {
+  const { signals } = req.body;
+
+  const createdIds = [];
+
+  for (const payload of signals) {
+    const {
+      entryPoints = [],
+      takeProfitOrders = [],
+      stopLossOrders = [],
+      ...rest
+    } = payload;
+
+    const {
+      ticker,
+      title,
+      price,
+      commentable,
+      paid,
+      type,
+      risk,
+      term,
+      volume,
+      date,
+      post,
+      status,
+      profitability
+    } = rest;
+
+    const created = await Signal.create(Signal.empty({
+      userId: req.user.id,
+      ticker,
+      title: title || ticker,
+      price,
+      commentable,
+      paid,
+      type,
+      risk,
+      term,
+      volume,
+      post,
+      status,
+      profitability,
+      createdAt: date
+    }));
+
+    createdIds.push(created.id);
+
+    await EntryPoint.bulkCreate(entryPoints.map(ep => ({
+      signalId: created.id,
+      price: ep.price,
+      comment: ep.comment
+    })));
+
+    await Order.bulkCreate([...takeProfitOrders, ...stopLossOrders].map(order => ({
+      signalId: created.id,
+      price: order.price,
+      volume: order.volume,
+      comment: order.comment,
+      type: order.type
+    })));
+  }
+
+  res.json({
+    success: true,
+    signalsIds: createdIds
+  });
 });
 
 module.exports = router;

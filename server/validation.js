@@ -105,6 +105,10 @@ const SignalSchema = {
   comments: Joi.array().optional().items(CommentSchema).label('Signal comments')
 };
 
+const BulkSignalSchema = {
+  signals: Joi.array().items(SignalSchema)
+};
+
 module.exports = {
   validate: validate,
   LoginSchema,
@@ -113,5 +117,6 @@ module.exports = {
   ResetPasswordSchema,
   VerifySchema,
   SignalSchema,
+  BulkSignalSchema,
   CommentSchema
 };
