@@ -6,6 +6,7 @@ const { Post } = require('./models/post');
 const { Comment } = require('./models/comment');
 const { EntryPoint } = require('./models/entrypoint');
 const { Order } = require('./models/order');
+const { History } = require('./models/history');
 
 // const { withCache } = require('./cache');
 
@@ -34,6 +35,7 @@ module.exports = {
   Comment,
   EntryPoint,
   Order,
+  History,
 
   SignalStatus,
 

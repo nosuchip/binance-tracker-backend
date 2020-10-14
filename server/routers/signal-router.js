@@ -1,7 +1,7 @@
 const express = require('express');
 
 const { sequelize } = require('@db');
-const { Signal, Comment, EntryPoint, Order } = require('@db');
+const { Signal, Comment, EntryPoint, Order, Sequelize } = require('@db');
 
 const { validate, SignalSchema, CommentSchema } = require('../validation');
 const utils = require('@base/utils');
@@ -15,16 +15,8 @@ router.get('/signals', async (req, res) => {
 
   const unprivilegedUser = !req.user || !['admin', 'paid user'].includes(req.user.role);
 
-  // if (unprivilegedUser) {
-  //   where.paid = false;
-  // }
-
   const query = utils.paginate({ where }, { offset, perPage });
-  let { count, signals } = await Signal.findManyWithRefs(query, {
-    // skipComments: unprivilegedUser,
-    // skipEntryPoints: unprivilegedUser,
-    // skipOrders: unprivilegedUser
-  });
+  let { count, signals } = await Signal.findManyWithRefs(query);
 
   signals = signals.map(data => ({
     ...data.signal.get(),
@@ -34,7 +26,17 @@ router.get('/signals', async (req, res) => {
     stopLossOrders: unprivilegedUser ? [] : data.stopLossOrders
   }));
 
-  res.json({ success: true, data: signals, pagination: { page, perPage, total: count } });
+  const available = await sequelize.query('SELECT id FROM Signals' + (unprivilegedUser ? ' WHERE paid <> TRUE' : ''), {
+    raw: true,
+    type: Sequelize.QueryTypes.SELECT
+  });
+
+  res.json({
+    success: true,
+    data: signals,
+    pagination: { page, perPage, total: count },
+    available: available.map(a => a.id)
+  });
 });
 
 router.get('/signals/:signalId', async (req, res) => {

@@ -1,6 +1,13 @@
 const _ = require('lodash');
-const { Signal, Order, SignalStatus, Sequelize } = require('@base/db');
+const { Signal, Order, History, SignalStatus, Sequelize } = require('@base/db');
 const logger = require('@base/logger');
+const config = require('@base/config');
+
+const ws = {
+  sendSignal: null,
+  sendSignals: null,
+  sendSparkline: null
+};
 
 var priceCache = {
   // ticker: lastPrice
@@ -8,6 +15,44 @@ var priceCache = {
 
 var signalsCache = {
   // ticker: [signal1, signal2, ...]
+};
+
+const SPARKLINE_LENGTH = 30;
+const sparklineCache = {
+  // ticker: { data, timestamp }
+};
+
+const saveHistory = async (message) => {
+  if (config.storeHistory) {
+    return History.createFromMessage(message);
+  }
+};
+
+/**
+ *
+ * @param {String} ticker
+ * @param {Number} price
+ * @param {Number} timestamp
+ */
+const updateSparkline = function (ticker, price, timestamp) {
+  let spark = sparklineCache[ticker];
+
+  if (!spark) {
+    sparklineCache[ticker] = { data: [], timestamp };
+    spark = sparklineCache[ticker];
+  }
+
+  spark.timestamp = timestamp;
+
+  if (spark.data.length === SPARKLINE_LENGTH) {
+    spark.data.shift();
+  }
+
+  spark.data.push(parseFloat(price));
+
+  logger.debug(`Sparkline updated for ticker ${ticker}, sparkline: ${JSON.stringify(spark)}`);
+
+  ws.sendSparkline({ ticker, data: spark.data, timestamp: spark.timestamp });
 };
 
 /**
@@ -55,6 +100,10 @@ const activateSignals = (ticker, price, lastPrice) => {
 
   const signals = signalsCache[ticker]; // Activate only signals whose ticker come in data frame
 
+  if (!signals) {
+    return signalsToActivates;
+  }
+
   const priceMin = Math.min(price, lastPrice);
   const priceMax = Math.max(price, lastPrice);
 
@@ -68,9 +117,11 @@ const activateSignals = (ticker, price, lastPrice) => {
       logger.debug(`Checking entry point ${entryPoint.id} @ ${entryPoint.price} between ${priceMax} and ${priceMin}`);
 
       if (between(entryPoint.price, priceMin, priceMax)) {
-        signalsToActivates.push({ id: signal.id, price: entryPoint.price });
         signal.status = SignalStatus.Active;
-        logger.debug(`Activating ${signal.type} signal ${signal.id} at price ${price} (entry point: ${entryPoint.price})`);
+        signal.price = entryPoint.price;
+        signal.lastPrice = entryPoint.price;
+        signalsToActivates.push({ ...signal });
+        logger.info(`Activating ${signal.type} signal ${signal.id} at price ${price} (entry point: ${entryPoint.price})`);
         break;
       }
     }
@@ -79,11 +130,17 @@ const activateSignals = (ticker, price, lastPrice) => {
   return signalsToActivates;
 };
 
-const handleDataFrame = async (message) => {
+const handleDataFrame = async (message, serverWs) => {
+  const signalsToSend = [];
   const ticker = message.s;
   const price = parseFloat(message.p);
+  const timestamp = parseInt(message.T);
 
-  logger.debug(`------>>> Data frame handling begin for ticker ${ticker} @ ${price} at ${new Date()} (${new Date().getTime()}) <<<------`);
+  logger.info(`------>>> Data frame handling begin for ticker ${ticker} @ ${price} at ${new Date()} (${new Date().getTime()}) <<<------`);
+
+  // Do not await
+  saveHistory(message);
+  updateSparkline(ticker, price, timestamp);
 
   const lastPrice = priceCache[ticker];
   priceCache[ticker] = price;
@@ -94,45 +151,73 @@ const handleDataFrame = async (message) => {
   }
 
   const activatedSignals = activateSignals(ticker, price, lastPrice);
-  logger.debug(`${activatedSignals.length} signals activated`);
-
   if (activatedSignals && activatedSignals.length) {
+    logger.verbose(`${activatedSignals.length} signals activated`);
+
     // Do not await here, not necessary for data preame processing, all required data already updated in-place
     Signal.activateMany(activatedSignals);
+
+    signalsToSend.push(...activatedSignals.map(s => ({
+      ...s,
+      comment: `Signal activated at price ${s.price}`,
+      comment_localized: { key: 'preview.signal_activated', signalId: s.id, ticker, title: s.title, price: s.price }
+    })));
   }
 
   const type = price > lastPrice ? 'long' : (price < lastPrice ? 'short' : '-');
-  logger.debug(`For ${ticker} dynamic changed to type ${type}`);
+  logger.verbose(`For ${ticker} dynamic changed to type ${type}`);
 
   const signalsToCheck = (signalsCache[ticker] || []).filter(signal => signal.status === SignalStatus.Active);
-
-  if (!signalsToCheck.length) {
-    logger.info(`No signals to analyze for ticker ${ticker} of type ${type}`);
-    return;
-  }
 
   const promises = [];
 
   signalsToCheck.forEach(signal => {
-    let triggered = (
-      (signal.type === 'long' && type === 'long') ||
-      (signal.type === 'short' && type === 'short')
-    ) ? signal.takeProfitOrders : signal.stopLossOrders;
+    let triggered;
+
+    if ((signal.type === 'long' && type === 'long') || (signal.type === 'short' && type === 'short')) {
+      logger.verbose(`signal.type=${signal.type}, type=${type}, choose to check take profits orders of signal ${signal.id}`);
+      triggered = signal.takeProfitOrders;
+    } else {
+      logger.verbose(`signal.type=${signal.type}, type=${type}, choose to check stop loss orders of signal ${signal.id}`);
+      triggered = signal.stopLossOrders;
+    }
 
     triggered = (type === 'long')
       ? triggered.filter(order => !order.closed && between(order.price, lastPrice, price))
       : triggered.filter(order => !order.closed && between(order.price, price, lastPrice));
+
+    logger.debug(`After filtering left triggered orders: ${JSON.stringify(triggered)}`);
+
     const orders = updateClosedAndRemaining(signal, triggered);
+    logger.verbose(`Updated and closed orders: ${JSON.stringify(orders)}`);
 
     if (orders.length) {
+      logger.info(`Notify clients about updated signal ${signal.id}`);
+
+      signalsToSend.push({
+        ...signal,
+        comment: `Signal order(s) triggered: ${orders.map(o => `of type ${o.type} @ ${o.price}`).join(',')}`,
+        comment_localized: {
+          key: 'preview.signal_level_triggered',
+          orders: orders.map(o => `${o.type} @ ${o.price}`).join(','),
+          ticker,
+          title: signal.title,
+          signalId: signal.id
+        }
+      });
+
       promises.push(...[
         Signal.update({
           remaining: signal.remaining,
           status: signal.status,
           lastPrice: signal.lastPrice,
           profitability: signal.profitability
-        }, { where: { id: signal.id } }),
-        ...orders.map(order => Order.update({ closed: true, closedVolume: order.closedVolume }, { where: { id: order.id } }))
+        }, {
+          where: { id: signal.id },
+          returning: true,
+          plain: true
+        }),
+        ...orders.map(order => Order.update({ closed: order.closed, closedVolume: order.closedVolume }, { where: { id: order.id } }))
       ]);
     }
   });
@@ -141,10 +226,14 @@ const handleDataFrame = async (message) => {
   await Promise.all(promises);
   logger.debug(`Finished awaiting for signals and orders update at ${new Date()} (${new Date().getTime()})`);
 
-  logger.debug(`Data frame handling finished for ticker ${ticker} @ ${price} at ${new Date()} (${new Date().getTime()})`);
+  if (signalsToSend.length) {
+    ws.sendSignals(signalsToSend);
+  }
+
+  logger.info(`Data frame handling finished for ticker ${ticker} @ ${price} at ${new Date()} (${new Date().getTime()})`);
 };
 
-const updateSignals = async () => {
+const reloadSignalsFromDb = async () => {
   const { count, signals } = await Signal.findManyWithRefs({
     where: {
       status: {
@@ -179,12 +268,20 @@ const updateSignals = async () => {
 
   signalsCache = _.groupBy(plain, 'ticker');
 
-  logger.debug(`updateSignals:: updated ${count} signals, tickers: ${Object.keys(signalsCache).join(',')}`);
+  logger.info(`reloadSignalsFromDb:: updated ${count} signals, tickers: ${Object.keys(signalsCache).join(',')}`);
+};
+
+const setWS = (websocketClallbacks) => {
+  Object.keys(websocketClallbacks).forEach(key => {
+    ws[key] = websocketClallbacks[key];
+  });
 };
 
 module.exports = {
   priceCache,
 
-  updateSignals,
-  handleDataFrame
+  reloadSignalsFromDb,
+  handleDataFrame,
+
+  setWS
 };

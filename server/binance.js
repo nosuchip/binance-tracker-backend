@@ -1,26 +1,17 @@
 const _ = require('lodash');
 const binanceWs = require('./websocket-binance');
 const serverWs = require('./websocket-server');
-const logger = require('./logger');
-const { Signal, User, History, Sequelize, sequelize } = require('./db/index');
-const config = require('./config');
+const { Signal, User, Sequelize, sequelize } = require('./db/index');
+const logger = require('@base/logger');
 
 const { decode } = require('@base/libs/token');
 const { isPaid } = require('@base/libs/user');
-const { updateSignals, handleDataFrame } = require('@base/libs/level-checker');
-
-const SPARKLINE_LENGTH = 30;
-
-const tradeSignalCache = {};
+const { reloadSignalsFromDb, handleDataFrame, setWS } = require('@base/libs/level-checker');
 
 /*
   {
-    signalId: {
-      members: [ wsClientId, wsClientId, ... ]
-    },
-    signalId: {
-      members: [ wsClientId, wsClientId, ... ]
-    },
+    signalId: { members: [ wsClientId, wsClientId, ... ] },
+    signalId: { members: [ wsClientId, wsClientId, ... ] },
     ...
   }
 */
@@ -28,14 +19,8 @@ const signalsRooms = {};
 
 /*
   {
-    ticker: {
-      sparkline: [],
-      members: [ wsClientId, wsClientId, ... ]
-    },
-    ticker: {
-      sparkline: [],
-      members: [ wsClientId, wsClientId, ... ]
-    },
+    ticker: [ wsClientId, wsClientId, ... ],
+    ticker: [ wsClientId, wsClientId, ... ],
     ...
   };
 
@@ -100,11 +85,11 @@ const handleClientSubscribeSparklines = signalsMiddleware((userSignals, _payload
 
   tickers.forEach(ticker => {
     if (!sparklineRooms[ticker]) {
-      sparklineRooms[ticker] = { sparkline: [], members: [], timestamp: 0 };
+      sparklineRooms[ticker] = [];
     }
 
-    if (!sparklineRooms[ticker].members.includes(client.clientId)) {
-      sparklineRooms[ticker].members.push(client.clientId);
+    if (!sparklineRooms[ticker].includes(client.clientId)) {
+      sparklineRooms[ticker].push(client.clientId);
     }
   });
 
@@ -126,9 +111,9 @@ const handleClientUnsubscribeSparklines = signalsMiddleware((userSignals, _paylo
   const tickers = Array.from(new Set(userSignals.map(signal => signal.ticker)));
 
   tickers.forEach(ticker => {
-    if (sparklineRooms[ticker] && sparklineRooms[ticker].members) {
-      const index = sparklineRooms[ticker].members.indexOf(client.clientId);
-      sparklineRooms[ticker].members.splice(index, 1);
+    if (sparklineRooms[ticker]) {
+      const index = sparklineRooms[ticker].indexOf(client.clientId);
+      sparklineRooms[ticker].splice(index, 1);
     }
   });
 
@@ -136,16 +121,34 @@ const handleClientUnsubscribeSparklines = signalsMiddleware((userSignals, _paylo
 });
 
 module.exports = async () => {
-  binanceWs.on('open', () => updateSignals());
-  binanceWs.on('trade', handleDataFrame);
+  const sendSignal = (signal) => {
+    logger.verbose(`sendSignal:: broadcasting 'signal' to clients with payload ${JSON.stringify(signal)}`);
+
+    const clients = _.get(signalsRooms[signal.id], 'members', []);
+    serverWs.broadcast('signal', signal, clients);
+  };
+
+  const sendSignals = (signals) => {
+    signals.forEach(sendSignal);
+  };
+
+  const sendSparkline = ({ ticker, data, _timestamp }) => {
+    const members = sparklineRooms[ticker] || [];
+    serverWs.broadcast('sparkline', { sparkline: data, ticker }, members);
+  };
+
+  setWS({ sendSignal, sendSignals, sendSparkline });
+
+  binanceWs.on('open', () => reloadSignalsFromDb());
+  binanceWs.on('trade', (message) => handleDataFrame(message));
 
   const signals = await sequelize.query('SELECT id, ticker, price FROM Signals', { raw: true, type: Sequelize.QueryTypes.SELECT });
   const tickers = Array.from(new Set(signals.map(signal => signal.ticker)));
 
-  await updateSignals();
+  await reloadSignalsFromDb();
   binanceWs.subscribeTicker(tickers);
 
-  // binanceWs.updateSignals(signals);
+  // binanceWs.reloadSignalsFromDb(signals);
 
   serverWs.on('subscribe_signals', handleClientSubscribeSignals);
   serverWs.on('unsubscribe_signals', handleClientUnsubscribeSignals);

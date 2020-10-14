@@ -5,6 +5,9 @@ const fs = require('fs');
 
 const PORT = process.env.STUB_PORT || 9999;
 
+const USE_KEYPRESS = false;
+const USE_TIMEOUT = 500;
+
 const keypress = async () => {
   process.stdin.setRawMode(true);
   return new Promise(resolve => process.stdin.once('data', data => {
@@ -16,6 +19,19 @@ const keypress = async () => {
     process.stdin.setRawMode(false);
     resolve();
   }));
+};
+
+const timeout = async (t) => {
+  return new Promise(resolve => setTimeout(() => resolve(), t));
+};
+
+const pause = async (message) => {
+  console.log(message);
+
+  if (USE_KEYPRESS) return keypress();
+  if (USE_TIMEOUT) return timeout(USE_TIMEOUT);
+
+  return null;
 };
 
 const timestamp = () => Math.round(new Date().getTime() / 1000);
@@ -73,9 +89,7 @@ const run = async () => {
 
     for (let i = 0; i < data.length; i++) {
       const [ticker, price, comment] = data[i];
-      console.log(`Press any key to send data [${ticker}, ${price}] to the client. ${comment ? 'Expected trigger:' + comment : ''}`);
-
-      await keypress();
+      await pause(`Press any key to send data [${ticker}, ${price}] to the client. ${comment ? 'Expected trigger:' + comment : ''}`);
 
       const event = {
         e: 'trade',

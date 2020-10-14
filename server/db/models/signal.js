@@ -71,7 +71,7 @@ class Signal extends Model {
 
   static async activateMany (signalPriceList) {
     return Promise.all(signalPriceList.map(({ id, price }) => Signal.update(
-      { status: SignalStatus.Active, price },
+      { status: SignalStatus.Active, price, pastPrice: price },
       { where: { status: SignalStatus.Delayed, id } }
     )));
   }
