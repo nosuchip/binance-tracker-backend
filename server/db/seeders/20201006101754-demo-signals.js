@@ -27,7 +27,8 @@ module.exports = {
       userId: adminId,
       remaining: 1.0,
       createdAt: new Date(),
-      updatedAt: new Date()
+      updatedAt: new Date(),
+      channel: 'demo seed 1'
     }, {
       status: 'active',
       profitability: 0,
@@ -42,7 +43,8 @@ module.exports = {
       userId: adminId,
       remaining: 1.0,
       createdAt: new Date(),
-      updatedAt: new Date()
+      updatedAt: new Date(),
+      channel: 'demo seed 2'
     }, {
       status: 'active',
       profitability: 0,
@@ -57,7 +59,8 @@ module.exports = {
       userId: adminId,
       remaining: 1.0,
       createdAt: new Date(),
-      updatedAt: new Date()
+      updatedAt: new Date(),
+      channel: 'demo seed 3'
     }]);
   },
 

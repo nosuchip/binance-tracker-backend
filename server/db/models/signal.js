@@ -24,6 +24,7 @@ class Signal extends Model {
       commentable: true,
       // userId: admin.id
       remaining: overloads.remaining || 1.0,
+      channel: '',
 
       ...overloads
     };
@@ -92,7 +93,8 @@ Signal.init({
   price: { type: DataTypes.DECIMAL(16, 8), allowNull: true },
   lastPrice: { type: DataTypes.DECIMAL(16, 8), allowNull: true },
   post: { type: DataTypes.STRING(1024), allowNull: true },
-  remaining: { type: DataTypes.DECIMAL(4, 3), allowNull: false }
+  remaining: { type: DataTypes.DECIMAL(4, 3), allowNull: false },
+  channel: { type: DataTypes.STRING(100), allowNull: true }
 }, {
   sequelize,
   modelName: 'Signal',

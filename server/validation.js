@@ -102,7 +102,9 @@ const SignalSchema = {
   entryPoints: Joi.array().items(EntryPointSchema),
   takeProfitOrders: Joi.array().items(OrderSchema),
   stopLossOrders: Joi.array().items(OrderSchema),
-  comments: Joi.array().optional().items(CommentSchema).label('Signal comments')
+  comments: Joi.array().optional().items(CommentSchema).label('Signal comments'),
+
+  channel: Joi.string().optional().allow('')
 };
 
 const BulkSignalSchema = {

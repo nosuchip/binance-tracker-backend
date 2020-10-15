@@ -82,7 +82,8 @@ router.post('/signals', validate(SignalSchema), async (req, res) => {
     date,
     post,
     status,
-    profitability
+    profitability,
+    channel
   } = rest;
 
   const created = await Signal.create(Signal.empty({
@@ -99,7 +100,8 @@ router.post('/signals', validate(SignalSchema), async (req, res) => {
     post,
     status,
     profitability,
-    createdAt: date
+    createdAt: date,
+    channel
   }));
 
   await EntryPoint.bulkCreate(entryPoints.map(ep => ({
@@ -244,7 +246,8 @@ router.post('/signals/bulk', validate(BulkSignalSchema), async (req, res) => {
       date,
       post,
       status,
-      profitability
+      profitability,
+      channel
     } = rest;
 
     const created = await Signal.create(Signal.empty({
@@ -261,7 +264,8 @@ router.post('/signals/bulk', validate(BulkSignalSchema), async (req, res) => {
       post,
       status,
       profitability: profitability || 0,
-      createdAt: date
+      createdAt: date,
+      channel
     }));
 
     createdIds.push(created.id);
