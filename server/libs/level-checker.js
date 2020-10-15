@@ -141,7 +141,10 @@ const handleDataFrame = async (message, serverWs) => {
 
   // Do not await
   saveHistory(message);
-  updateSparkline(ticker, price, timestamp);
+
+  if (config.updateSparklines) {
+    updateSparkline(ticker, price, timestamp);
+  }
 
   const lastPrice = priceCache[ticker];
   priceCache[ticker] = price;

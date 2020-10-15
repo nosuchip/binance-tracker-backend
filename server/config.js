@@ -65,7 +65,9 @@ const config = {
 
     // disable delaying - full speed until the max limit is reached
     delayMs: 0
-  }
+  },
+
+  updateSparklines: !!process.env.UPDATE_SPARKLINES
 };
 
 console.log('Using config:');
