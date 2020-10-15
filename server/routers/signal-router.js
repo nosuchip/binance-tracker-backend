@@ -22,8 +22,8 @@ router.get('/signals', async (req, res) => {
     ...data.signal.get(),
     comments: unprivilegedUser ? data.comments.map(c => ({})) : data.comments,
     entryPoints: unprivilegedUser ? [] : data.entryPoints,
-    takeProfitOrders: unprivilegedUser ? [] : data.takeProfitOrders,
-    stopLossOrders: unprivilegedUser ? [] : data.stopLossOrders
+    takeProfitOrders: data.takeProfitOrders,
+    stopLossOrders: data.stopLossOrders
   }));
 
   const available = await sequelize.query('SELECT id FROM Signals' + (unprivilegedUser ? ' WHERE paid <> TRUE' : ''), {

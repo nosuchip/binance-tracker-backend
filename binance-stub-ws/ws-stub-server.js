@@ -1,3 +1,4 @@
+const uuid = require('uuid');
 const WebSocket = require('ws');
 const _ = require('lodash');
 const csv = require('csv-parser');
@@ -5,8 +6,10 @@ const fs = require('fs');
 
 const PORT = process.env.STUB_PORT || 9999;
 
-const USE_KEYPRESS = false;
-const USE_TIMEOUT = 500;
+const USE_KEYPRESS = true;
+const USE_TIMEOUT = false;
+
+const clients = {};
 
 const keypress = async () => {
   process.stdin.setRawMode(true);
@@ -26,10 +29,15 @@ const timeout = async (t) => {
 };
 
 const pause = async (message) => {
-  console.log(message);
+  if (USE_KEYPRESS) {
+    console.log(`Press any key to send data ${message}`);
+    return keypress();
+  }
 
-  if (USE_KEYPRESS) return keypress();
-  if (USE_TIMEOUT) return timeout(USE_TIMEOUT);
+  if (USE_TIMEOUT) {
+    console.log(`Awaiting and send data ${message}`);
+    return timeout(USE_TIMEOUT);
+  }
 
   return null;
 };
@@ -72,6 +80,45 @@ const parseArgs = async () => {
   _.shuffle(data);
 };
 
+const onClose = (ws, code, reason) => {
+  if (!clients[ws.clientId]) {
+    return;
+  }
+
+  console.error(`Client ${ws.clientId} disconnected`);
+  delete clients[ws.clientId];
+};
+
+const iterateData = async (tickerData, ws) => {
+  for (let i = 0; i < tickerData.length; i++) {
+    if (!clients[ws.clientId]) {
+      console.log('Client not found (disconnected?), stop data sending iteration');
+      return;
+    }
+
+    const [ticker, price, comment] = tickerData[i];
+    await pause(`[${ticker}, ${price}] to the client. ${comment ? 'Expected trigger:' + comment : ''}`);
+
+    const event = {
+      e: 'trade',
+      E: timestamp(),
+      s: ticker.replace(/[^A-Z]/g, ''),
+      t: timestamp(),
+      p: price.toString(),
+      q: '1',
+      b: (1000 + i).toString(),
+      a: (2000 + i).toString(),
+      T: timestamp(),
+      m: true,
+      M: true
+    };
+
+    ws.send(JSON.stringify(event));
+  }
+
+  console.log(`All data for client ${ws.clientId} sent`);
+};
+
 const run = async () => {
   await parseArgs();
 
@@ -82,33 +129,13 @@ const run = async () => {
   console.log(`WS server listens on port ${PORT}`);
 
   socket.on('connection', async (ws, req) => {
-    // ws.on('close', (code, reason) => onClose(ws, code, reason));
-    // ws.on('pong', (data) => onPong(ws, data));
+    ws.clientId = uuid.v4();
+    clients[ws.clientId] = ws;
 
-    console.log('Client connected, ready to send data');
+    ws.on('close', (code, reason) => onClose(ws, code, reason));
+    console.log(`Client ${ws.clientId} connected, ready to send data`);
 
-    for (let i = 0; i < data.length; i++) {
-      const [ticker, price, comment] = data[i];
-      await pause(`Press any key to send data [${ticker}, ${price}] to the client. ${comment ? 'Expected trigger:' + comment : ''}`);
-
-      const event = {
-        e: 'trade',
-        E: timestamp(),
-        s: ticker.replace(/[^A-Z]/g, ''),
-        t: timestamp(),
-        p: price.toString(),
-        q: '1',
-        b: (1000 + i).toString(),
-        a: (2000 + i).toString(),
-        T: timestamp(),
-        m: true,
-        M: true
-      };
-
-      ws.send(JSON.stringify(event));
-    }
-
-    console.log('All data sent');
+    iterateData(data, ws);
   });
 };
 

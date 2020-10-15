@@ -200,6 +200,7 @@ const handleDataFrame = async (message, serverWs) => {
         comment: `Signal order(s) triggered: ${orders.map(o => `of type ${o.type} @ ${o.price}`).join(',')}`,
         comment_localized: {
           key: 'preview.signal_level_triggered',
+          ordersIds: orders.map(o => o.id),
           orders: orders.map(o => `${o.type} @ ${o.price}`).join(','),
           ticker,
           title: signal.title,
