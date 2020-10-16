@@ -122,7 +122,7 @@ const activateSignals = (ticker, price, lastPrice) => {
         signal.price = entryPoint.price;
         signal.lastPrice = entryPoint.price;
         signalsToActivates.push({ ...signal });
-        logger.info(`Activating ${signal.type} signal ${signal.id} at price ${price} (entry point: ${entryPoint.price})`);
+        logger.info(`Activating ${signal.type} signal ${signal.id} at price ${entryPoint.price} (entry point: ${entryPoint.id})`);
         break;
       }
     }
