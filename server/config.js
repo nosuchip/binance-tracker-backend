@@ -67,7 +67,9 @@ const config = {
     delayMs: 0
   },
 
-  updateSparklines: !!process.env.UPDATE_SPARKLINES
+  updateSparklines: !!process.env.UPDATE_SPARKLINES,
+
+  wakeUpTimeoutMs: parseInt(process.env.WAKE_UP_TIMEOUT_MS) || 10 * 60 * 1000
 };
 
 console.log('Using config:');

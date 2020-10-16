@@ -156,7 +156,7 @@ const handleDataFrame = async (message, serverWs) => {
 
   const activatedSignals = activateSignals(ticker, price, lastPrice);
   if (activatedSignals && activatedSignals.length) {
-    logger.verbose(`${activatedSignals.length} signals activated`);
+    logger.info(`Got signal activation for: ${JSON.stringify(activatedSignals)}`);
 
     // Do not await here, not necessary for data preame processing, all required data already updated in-place
     Signal.activateMany(activatedSignals);

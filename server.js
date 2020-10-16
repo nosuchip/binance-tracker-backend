@@ -18,9 +18,12 @@ const errorHandlers = require('./server/routers/error-handlers');
 
 const middleware = require('./server/middleware');
 
+const appRouter = require('./server/routers/app-router');
 const accountRouter = require('./server/routers/account-router');
 const adminRouter = require('./server/routers/admin-router');
 const signalRouter = require('./server/routers/signal-router');
+
+const wakeUp = require('@base/libs/wake-up-heroku');
 
 const promiseApp = async () => {
   return new Promise((resolve, reject) => {
@@ -45,6 +48,7 @@ const promiseApp = async () => {
     app.use(middleware.staticFileMiddleware);
 
     [
+      appRouter,
       accountRouter,
       adminRouter,
       signalRouter
@@ -71,6 +75,8 @@ const promiseServer = async (app) => {
 const promiseRun = (server) => {
   return new Promise((resolve, reject) => {
     server.listen(config.port, () => {
+      wakeUp();
+
       logger.info('Server running on the port ' + config.port);
       resolve();
     });
