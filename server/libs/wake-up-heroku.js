@@ -26,10 +26,11 @@ const wakeUp = () => {
   setTimeout(async () => {
     try {
       const { body, status } = await sendRequest();
-      console.log(`App responded with code ${status} and body ${body}`);
+      console.log(`Wake up: app responded with code ${status} and body ${body}`);
     } catch (error) {
-      console.error('Unable to send request', error);
+      console.error('Wake up: Unable to send request', error);
     } finally {
+      console.log(`Wake up: rescheduling next wake up run in ${config.wakeUpTimeoutMs}ms`);
       wakeUp();
     }
   }, config.wakeUpTimeoutMs);
