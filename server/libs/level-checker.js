@@ -95,35 +95,64 @@ const between = (value, bottom, top) => {
   return (value >= bottom) && (value <= top);
 };
 
+const findFirstBetween = (list, bottom, top, getter = null) => {
+  const forward = (arr, cb) => {
+    for (let i = 0; i < arr.length; i++) {
+      if (cb(arr[i], i) === false) {
+        break;
+      }
+    }
+  };
+
+  const backward = (arr, cb) => {
+    for (let i = arr.length - 1; i >= 0; i--) {
+      if (cb(arr[i], i) === false) {
+        break;
+      }
+    }
+  };
+
+  let found = null;
+
+  const predicate = (item) => {
+    const value = getter ? getter(item) : item;
+    const isBetween = bottom >= top ? between(value, top, bottom) : between(value, bottom, top);
+
+    if (isBetween) {
+      found = item;
+      return false;
+    }
+  };
+
+  bottom >= top ? backward(list, predicate) : forward(list, predicate);
+
+  return found;
+};
+
 const activateSignals = (ticker, price, lastPrice) => {
   const signalsToActivates = []; // { id: X, price: Y }
 
-  const signals = signalsCache[ticker]; // Activate only signals whose ticker come in data frame
+  // Activate only signals whose ticker come in data frame and that are Delayed
+  const signals = (signalsCache[ticker] || []).filter(signal => signal.status === SignalStatus.Delayed);
 
-  if (!signals) {
+  if (!signals || !signals.length) {
     return signalsToActivates;
   }
 
-  const priceMin = Math.min(price, lastPrice);
-  const priceMax = Math.max(price, lastPrice);
-
   signals.forEach((signal) => {
-    if (signal.status !== SignalStatus.Delayed) {
-      return;
-    }
+    const activatedEntryPoint = findFirstBetween(price, lastPrice);
 
-    // For long entryPoints in reverse order by price: high -> low
-    for (const entryPoint of signal.entryPoints) {
-      logger.debug(`Checking entry point ${entryPoint.id} @ ${entryPoint.price} between ${priceMax} and ${priceMin}`);
+    if (activatedEntryPoint) {
+      logger.debug(`Activation: activating signal ${signal.id} by entry points ${activatedEntryPoint.id} @ ` +
+                   `${activatedEntryPoint.price}  ${price} and last price ${lastPrice}`);
 
-      if (between(entryPoint.price, priceMin, priceMax)) {
-        signal.status = SignalStatus.Active;
-        signal.price = entryPoint.price;
-        signal.lastPrice = entryPoint.price;
-        signalsToActivates.push({ ...signal });
-        logger.info(`Activating ${signal.type} signal ${signal.id} at price ${entryPoint.price} (entry point: ${entryPoint.id})`);
-        break;
-      }
+      signal.status = SignalStatus.Active;
+      signal.price = activatedEntryPoint.price;
+      signal.lastPrice = activatedEntryPoint.price;
+      signalsToActivates.push(signal);
+    } else {
+      logger.debug(`Activation: for signal ${signal.id} no entry points were hit between price ${price} ` +
+                   `and last price ${lastPrice}`);
     }
   });
 
@@ -250,10 +279,8 @@ const reloadSignalsFromDb = async () => {
 
     signal.entryPoints = _.chain(entryPoints)
       .map(item => item.get())
-      .sortBy('price');
-    signal.entryPoints = signal.type === 'long'
-      ? signal.entryPoints.reverse().value()
-      : signal.entryPoints.value();
+      .sortBy('price')
+      .value();
 
     signal.takeProfitOrders = _.chain(takeProfitOrders)
       .filter(order => !order.closed)
