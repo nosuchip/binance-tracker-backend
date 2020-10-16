@@ -24,9 +24,10 @@ function CustomError (opts) {
 util.inherits(CustomError, Error);
 
 const unpackQuery = (req = {}) => {
-  const page = parseInt(req.page) || 0;
-  const perPage = parseInt(req.perPage) || DEFAULT_PER_PAGE;
-  const filter = req.filter || '';
+  let page = (parseInt(req.query.page) - 1) || 0;
+  if (page < 0) page = 0;
+  const perPage = parseInt(req.query.perPage) || DEFAULT_PER_PAGE;
+  const filter = req.query.filter || '';
   const offset = page * perPage;
 
   return { page, perPage, filter, offset };

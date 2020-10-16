@@ -1,21 +1,27 @@
 const express = require('express');
 
-const { sequelize } = require('@db');
-const { Signal, Comment, EntryPoint, Order, Sequelize } = require('@db');
-
+const { sequelize, Signal, Comment, EntryPoint, Order, Sequelize } = require('@db');
+const Op = Sequelize.Op;
 const { validate, SignalSchema, BulkSignalSchema, CommentSchema } = require('../validation');
 const utils = require('@base/utils');
 
 const router = express.Router();
 
 router.get('/signals', async (req, res) => {
-  const { page, perPage, offset } = utils.unpackQuery(req);
+  const { page, perPage, filter } = utils.unpackQuery(req);
 
   const where = {};
 
+  if (filter) {
+    where[Op.or] = [
+      { ticker: { [Op.like]: `%${filter}%` } },
+      { title: { [Op.like]: `%${filter}%` } }
+    ];
+  };
+
   const unprivilegedUser = !req.user || !['admin', 'paid user'].includes(req.user.role);
 
-  const query = utils.paginate({ where }, { offset, perPage });
+  const query = utils.paginate({ where }, { req });
   let { count, signals } = await Signal.findManyWithRefs(query);
 
   signals = signals.map(data => ({
