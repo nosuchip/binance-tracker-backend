@@ -23,7 +23,7 @@ const accountRouter = require('./server/routers/account-router');
 const adminRouter = require('./server/routers/admin-router');
 const signalRouter = require('./server/routers/signal-router');
 
-const wakeUp = require('@base/libs/wake-up-heroku');
+const { wakeUp } = require('@base/libs/wake-up-heroku');
 
 const promiseApp = async () => {
   return new Promise((resolve, reject) => {
