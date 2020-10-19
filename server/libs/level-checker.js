@@ -140,7 +140,7 @@ const activateSignals = (ticker, price, lastPrice) => {
   }
 
   signals.forEach((signal) => {
-    const activatedEntryPoint = findFirstBetween(price, lastPrice);
+    const activatedEntryPoint = findFirstBetween(signal.entryPoints, price, lastPrice, ep => ep.price);
 
     if (activatedEntryPoint) {
       logger.debug(`Activation: activating signal ${signal.id} by entry points ${activatedEntryPoint.id} @ ` +
