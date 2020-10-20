@@ -1,5 +1,5 @@
 const _ = require('lodash');
-const { Signal, Order, History, SignalStatus, Sequelize } = require('@base/db');
+const { Signal, Order, History, SignalStatus, SignalType, Sequelize } = require('@base/db');
 const logger = require('@base/logger');
 const config = require('@base/config');
 
@@ -26,6 +26,16 @@ const saveHistory = async (message) => {
   if (config.storeHistory) {
     return History.createFromMessage(message);
   }
+};
+
+const getProfitability = (signal) => {
+  if (!signal || !signal.type || !signal.price || !signal.exitPrice) {
+    return 0;
+  }
+
+  return (signal.type === SignalType.Long)
+    ? (signal.exitPrice / signal.price - 1) * 100
+    : (signal.price / signal.exitPrice - 1) * 100;
 };
 
 /**
@@ -73,7 +83,8 @@ const updateClosedAndRemaining = (signal, orders) => {
       order.closedVolume = order.volume;
       signal.remaining -= order.volume;
       signal.lastPrice = order.price;
-      signal.profitability += order.closedVolume * order.price;
+      signal.exitPrice += order.closedVolume * order.price;
+      signal.profitability = getProfitability(signal);
 
       ordersToUpdate.push(order);
     } else {
@@ -81,7 +92,8 @@ const updateClosedAndRemaining = (signal, orders) => {
       signal.status = SignalStatus.Finished;
       signal.remaining = 0;
       signal.lastPrice = order.price;
-      signal.profitability += order.closedVolume * order.price;
+      signal.exitPrice += order.closedVolume * order.price;
+      signal.profitability = getProfitability(signal);
 
       ordersToUpdate.push(order);
       break;

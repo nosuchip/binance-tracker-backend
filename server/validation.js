@@ -89,7 +89,7 @@ const SignalSchema = {
   price: Joi.number().optional().label('Price'),
   commentable: Joi.boolean().required().label('Comments allowed'),
   paid: Joi.boolean().required().label('Paid'),
-
+  exitPrice: Joi.number().optional().label('Exit price'),
   profitability: Joi.number().optional().label('Profitability'),
   type: Joi.string().optional().label('Type'),
   risk: Joi.string().optional().label('Risk'),

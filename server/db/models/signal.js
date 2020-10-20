@@ -9,6 +9,11 @@ const SignalStatus = {
   Cancelled: 'cancelled'
 };
 
+const SignalType = {
+  Long: 'long',
+  Short: 'short'
+};
+
 class Signal extends Model {
   static empty (overloads = {}) {
     return {
@@ -82,9 +87,10 @@ Signal.init({
   id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
   status: { type: DataTypes.ENUM(Object.values(SignalStatus)), allowNull: false },
   profitability: { type: DataTypes.DECIMAL(16, 8), allowNull: false },
+  exitPrice: { type: DataTypes.DECIMAL(16, 8), allowNull: true },
   ticker: { type: DataTypes.STRING(50), allowNull: false },
   title: { type: DataTypes.STRING(50), allowNull: false },
-  type: { type: DataTypes.ENUM('short', 'long'), allowNull: false },
+  type: { type: DataTypes.ENUM(Object.values(SignalType)), allowNull: false },
   risk: { type: DataTypes.ENUM('high', 'medium', 'low'), allowNull: false },
   term: { type: DataTypes.ENUM('short', 'medium', 'long'), allowNull: false },
   volume: { type: DataTypes.DECIMAL(16, 8), allowNull: false },
@@ -107,5 +113,6 @@ Signal.init({
 
 module.exports = {
   Signal,
-  SignalStatus
+  SignalStatus,
+  SignalType
 };

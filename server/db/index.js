@@ -1,7 +1,7 @@
 const { sequelize, Sequelize, checkConnection } = require('./database');
 
 const { User } = require('./models/user');
-const { Signal, SignalStatus } = require('./models/signal');
+const { Signal, SignalStatus, SignalType } = require('./models/signal');
 const { Post } = require('./models/post');
 const { Comment } = require('./models/comment');
 const { EntryPoint } = require('./models/entrypoint');
@@ -38,6 +38,7 @@ module.exports = {
   History,
 
   SignalStatus,
+  SignalType,
 
   init
 };
