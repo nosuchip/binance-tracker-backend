@@ -2,11 +2,12 @@ module.exports = {
   up: async (queryInterface, Sequelize) => {
     const transaction = await queryInterface.sequelize.transaction();
 
-    return Promise.all([
+    await Promise.all([
       queryInterface.changeColumn('Signals', 'profitability', { type: Sequelize.DECIMAL(16, 8), allowNull: true }, { transaction }),
-      queryInterface.renameColumn('Signals', 'profitability', 'exitPrice', { transaction }),
-      queryInterface.addColumn('Signals', 'profitability', { type: Sequelize.DECIMAL(16, 8), allowNull: false })
+      queryInterface.renameColumn('Signals', 'profitability', 'exitPrice', { transaction })
     ]);
+
+    return queryInterface.addColumn('Signals', 'profitability', { type: Sequelize.DECIMAL(16, 8), allowNull: false });
   },
 
   down: async (queryInterface, Sequelize) => {
