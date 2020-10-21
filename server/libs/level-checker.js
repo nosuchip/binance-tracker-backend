@@ -130,6 +130,8 @@ const findFirstBetween = (list, bottom, top, getter = null) => {
     const value = getter ? getter(item) : item;
     const isBetween = bottom >= top ? between(value, top, bottom) : between(value, bottom, top);
 
+    logger.debug(`Check is EP ${JSON.stringify(item)} between ${bottom} and ${top}: ${isBetween}`);
+
     if (isBetween) {
       found = item;
       return false;
@@ -152,11 +154,11 @@ const activateSignals = (ticker, price, lastPrice) => {
   }
 
   signals.forEach((signal) => {
-    const activatedEntryPoint = findFirstBetween(signal.entryPoints, price, lastPrice, ep => ep.price);
+    const activatedEntryPoint = findFirstBetween(signal.entryPoints, lastPrice, price, ep => ep.price);
 
     if (activatedEntryPoint) {
       logger.debug(`Activation: activating signal ${signal.id} by entry points ${activatedEntryPoint.id} @ ` +
-                   `${activatedEntryPoint.price}  ${price} and last price ${lastPrice}`);
+                   `${activatedEntryPoint.price} brtween price ${price} and last price ${lastPrice}`);
 
       signal.status = SignalStatus.Active;
       signal.price = activatedEntryPoint.price;
