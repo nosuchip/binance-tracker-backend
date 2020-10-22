@@ -1,6 +1,7 @@
 const { DataTypes, Model } = require('sequelize');
 const { sequelize } = require('../database');
 const { afterCreate, afterUpdate, afterDestroy } = require('@db/hooks/signal-hooks');
+const { Channel } = require('./channel');
 
 const SignalStatus = {
   Delayed: 'delayed',
@@ -29,14 +30,19 @@ class Signal extends Model {
       commentable: true,
       // userId: admin.id
       remaining: overloads.remaining || 1.0,
-      channel: '',
 
       ...overloads
     };
   }
 
   static async findOneWithRefs (query) {
-    const signal = await Signal.findOne(query);
+    const signal = await Signal.findOne({
+      ...query,
+      include: [{
+        model: Channel,
+        as: 'channel'
+      }]
+    });
     const comments = await signal.getComments();
     const entryPoints = await signal.getEntryPoints();
     const orders = await signal.getOrders();
@@ -57,7 +63,13 @@ class Signal extends Model {
   static async findManyWithRefs (query, opts = {}) {
     const { skipComments, skipEntryPoints, skipOrders } = opts;
 
-    const { count, rows: signals } = await Signal.findAndCountAll(query);
+    const { count, rows: signals } = await Signal.findAndCountAll({
+      ...query,
+      include: [{
+        model: Channel,
+        as: 'channel'
+      }]
+    });
 
     const results = await Promise.all(
       signals.map(signal => Promise.all([
@@ -99,8 +111,7 @@ Signal.init({
   price: { type: DataTypes.DECIMAL(16, 8), allowNull: true },
   lastPrice: { type: DataTypes.DECIMAL(16, 8), allowNull: true },
   post: { type: DataTypes.STRING(1024), allowNull: true },
-  remaining: { type: DataTypes.DECIMAL(4, 3), allowNull: false },
-  channel: { type: DataTypes.STRING(100), allowNull: true }
+  remaining: { type: DataTypes.DECIMAL(4, 3), allowNull: false }
 }, {
   sequelize,
   modelName: 'Signal',

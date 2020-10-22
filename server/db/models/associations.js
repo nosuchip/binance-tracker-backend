@@ -4,12 +4,22 @@ const { Post } = require('./post');
 const { Comment } = require('./comment');
 const { EntryPoint } = require('./entrypoint');
 const { Order } = require('./order');
+const { Channel } = require('./channel');
 
 const associate = async () => {
   Signal.belongsTo(User, {
     onDelete: 'SET NULL',
     foreignKey: {
       name: 'userId',
+      allowNull: true
+    }
+  });
+
+  Signal.belongsTo(Channel, {
+    onDelete: 'SET NULL',
+    as: 'channel',
+    foreignKey: {
+      name: 'channelId',
       allowNull: true
     }
   });

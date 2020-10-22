@@ -28,7 +28,9 @@ module.exports = {
       remaining: 1.0,
       createdAt: new Date(),
       updatedAt: new Date(),
-      channel: 'demo seed 1'
+      channel: {
+        name: 'demo seed 1'
+      }
     }, {
       status: 'active',
       profitability: 0,
@@ -44,7 +46,9 @@ module.exports = {
       remaining: 1.0,
       createdAt: new Date(),
       updatedAt: new Date(),
-      channel: 'demo seed 2'
+      channel: {
+        name: 'demo seed 2'
+      }
     }, {
       status: 'active',
       profitability: 0,
@@ -60,7 +64,9 @@ module.exports = {
       remaining: 1.0,
       createdAt: new Date(),
       updatedAt: new Date(),
-      channel: 'demo seed 3'
+      channel: {
+        name: 'demo seed 3'
+      }
     }]);
   },
 

@@ -80,6 +80,12 @@ const OrderSchema = {
   ...optionalFields
 };
 
+const ChannelSchema = {
+  id: Joi.number().optional().label('ID'),
+  name: Joi.string().required().label('Channel name'),
+  description: Joi.string().optional().label('Channel description').allow(null, '')
+};
+
 const SignalSchema = {
   id: Joi.number().optional().label('ID'),
   status: Joi.string().optional().label('Status'),
@@ -104,7 +110,7 @@ const SignalSchema = {
   stopLossOrders: Joi.array().items(OrderSchema),
   comments: Joi.array().optional().items(CommentSchema).label('Signal comments'),
 
-  channel: Joi.string().optional().allow('')
+  channel: Joi.object().optional().keys(ChannelSchema)
 };
 
 const BulkSignalSchema = {
