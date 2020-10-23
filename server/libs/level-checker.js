@@ -1,5 +1,5 @@
 const _ = require('lodash');
-const { Signal, Order, History, SignalStatus, SignalType, Sequelize } = require('@base/db');
+const { Signal, Order, History, SignalStatus, SignalType, Sequelize, Log, EntryPoint } = require('@base/db');
 const logger = require('@base/logger');
 const config = require('@base/config');
 
@@ -81,19 +81,31 @@ const updateClosedAndRemaining = (signal, orders) => {
 
     if (signal.remaining - order.volume > 0) {
       order.closedVolume = order.volume;
+      order.triggerDate = new Date();
+
       signal.remaining -= order.volume;
       signal.lastPrice = order.price;
       signal.exitPrice += order.closedVolume * order.price;
       signal.profitability = getProfitability(signal);
 
+      Log.log('info', `Order ${order.id} closed by full volume ${order.closedVolume}, signal ${signal.id} ` +
+        `remaining: ${signal.remaining}, signal last price: ${order.price}, signal exit price: ${signal.exitPrice}, ` +
+        `signal profitability: ${signal.profitability}`);
+
       ordersToUpdate.push(order);
-    } else {
+    } else if (signal.remaining) {
       order.closedVolume = signal.remaining;
+      order.triggerDate = new Date();
+
       signal.status = SignalStatus.Finished;
       signal.remaining = 0;
       signal.lastPrice = order.price;
       signal.exitPrice += order.closedVolume * order.price;
       signal.profitability = getProfitability(signal);
+
+      Log.log('info', `Order ${order.id} closed by partial volume ${order.closedVolume}, signal ${signal.id}` +
+        ` remaining: ${signal.remaining}, signal last price: ${order.price}, signal exit price: ${signal.exitPrice}, ` +
+        `signal profitability: ${signal.profitability}`);
 
       ordersToUpdate.push(order);
       break;
@@ -157,13 +169,20 @@ const activateSignals = (ticker, price, lastPrice) => {
     const activatedEntryPoint = findFirstBetween(signal.entryPoints, lastPrice, price, ep => ep.price);
 
     if (activatedEntryPoint) {
-      logger.debug(`Activation: activating signal ${signal.id} by entry points ${activatedEntryPoint.id} @ ` +
-                   `${activatedEntryPoint.price} brtween price ${price} and last price ${lastPrice}`);
-
       signal.status = SignalStatus.Active;
       signal.price = activatedEntryPoint.price;
       signal.lastPrice = activatedEntryPoint.price;
       signalsToActivates.push(signal);
+
+      activatedEntryPoint.triggerDate = new Date();
+      EntryPoint
+        .update({ triggerDate: new Date() }, { where: { id: activatedEntryPoint.id } })
+        .catch(error => logger.error(`Unable to update entry point: ${error.message}`));
+
+      const message = `Activation: activating signal ${signal.id} by entry points ${activatedEntryPoint.id} @ ` +
+                   `${activatedEntryPoint.price} between price ${price} and last price ${lastPrice}`;
+      logger.debug(message);
+      Log.log('info', message);
     } else {
       logger.debug(`Activation: for signal ${signal.id} no entry points were hit between price ${price} ` +
                    `and last price ${lastPrice}`);
@@ -233,6 +252,13 @@ const handleDataFrame = async (message, serverWs) => {
       : triggered.filter(order => !order.closed && between(order.price, price, lastPrice));
 
     logger.debug(`After filtering left triggered orders: ${JSON.stringify(triggered)}`);
+
+    if (triggered.length) {
+      const message = `Level trigger: for signal ${signal.id} levels triggered: ` +
+          `${triggered.map(o => `${o.id}@${o.price}`).join(', ')} ` +
+          `between price ${price} and last price ${lastPrice}`;
+      Log.log('info', message);
+    }
 
     const orders = updateClosedAndRemaining(signal, triggered);
     logger.verbose(`Updated and closed orders: ${JSON.stringify(orders)}`);

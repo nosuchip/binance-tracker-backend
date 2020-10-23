@@ -8,6 +8,7 @@ const { EntryPoint } = require('./models/entrypoint');
 const { Order } = require('./models/order');
 const { History } = require('./models/history');
 const { Channel } = require('./models/channel');
+const { Log } = require('./models/log');
 
 // const { withCache } = require('./cache');
 
@@ -38,6 +39,7 @@ module.exports = {
   Order,
   History,
   Channel,
+  Log,
 
   SignalStatus,
   SignalType,

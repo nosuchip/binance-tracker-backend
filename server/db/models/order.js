@@ -15,7 +15,8 @@ Order.init({
   comment: { type: DataTypes.STRING(256), allowNull: true },
   type: { type: DataTypes.ENUM(Object.values(OrderTypes)) },
   closed: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false },
-  closedVolume: { type: DataTypes.DECIMAL(4, 3), allowNull: true }
+  closedVolume: { type: DataTypes.DECIMAL(4, 3), allowNull: true },
+  triggerPrice: { type: DataTypes.DECIMAL(16, 8), allowNull: true }
 }, {
   sequelize,
   modelName: 'Order'
