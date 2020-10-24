@@ -4,6 +4,9 @@ const logger = require('./logger');
 const WebSocket = require('ws');
 const config = require('./config');
 
+const DATA_CHECK_INTERVAL_MS = 10000; // 1 second
+const MAX_DATA_CHECK_INTERVAL_MS = 30000; // 25 seconds
+
 class BinanceTracker extends EventEmitter {
   constructor (uri) {
     super();
@@ -16,14 +19,24 @@ class BinanceTracker extends EventEmitter {
     this.messageId = 1;
     this.tickersSubs = [];
 
+    this.dataCheckTimeout = DATA_CHECK_INTERVAL_MS;
+    this.dataCheckTimer = null;
+
     this.rws = new ReconnectingWebsocket(uri, [], options);
     this.rws.addEventListener('open', () => {
       logger.info('BinanceTracker socket connected');
+
+      if (this.tickersSubs.length) {
+        this.subscribeTicker(this.tickersSubs, true);
+      }
 
       this.emit('open');
     });
 
     this.rws.addEventListener('message', ({ data }) => {
+      this.dataCheckTimeout = DATA_CHECK_INTERVAL_MS;
+      this.restartDataTimer();
+
       const message = JSON.parse(data);
       const { e: event } = message;
 
@@ -33,6 +46,35 @@ class BinanceTracker extends EventEmitter {
         this.emit(event, message);
       }
     });
+  }
+
+  restartDataTimer () {
+    if (this.dataCheckTimer) {
+      clearTimeout(this.dataCheckTimer);
+    }
+
+    logger.debug(`Resetting data check timer for ${this.dataCheckTimeout}ms after now`);
+
+    this.dataCheckTimer = setTimeout(() => {
+      this.dataCheckTimer = null;
+
+      if (this.tickersSubs.length) {
+        logger.warn(`In ${this.dataCheckTimeout}ms after last data no new data received while have active ` +
+          `subscriptions "${this.tickersSubs.join(',')}" (probably socket stuck), forcibly reconnecting`);
+
+        this.dataCheckTimeout += DATA_CHECK_INTERVAL_MS;
+
+        if (this.dataCheckTimeout > MAX_DATA_CHECK_INTERVAL_MS) {
+          this.dataCheckTimeout = MAX_DATA_CHECK_INTERVAL_MS;
+        }
+
+        this.rws.reconnect();
+      } else {
+        logger.debug('Data check time out but haven\'t active subscriptions, just restart timer');
+      }
+
+      this.restartDataTimer();
+    }, this.dataCheckTimeout);
   }
 
   send (payload) {
@@ -45,12 +87,12 @@ class BinanceTracker extends EventEmitter {
     this.rws.send(JSON.stringify(payload));
   }
 
-  subscribeTicker (tickers) {
+  subscribeTicker (tickers, force) {
     if (!Array.isArray(tickers)) {
       tickers = [tickers];
     }
 
-    tickers = tickers
+    const newTickers = tickers
       .map((ticker) => ticker.toLowerCase())
       .filter((ticker) => !this.tickersSubs.includes(ticker));
 
@@ -58,10 +100,10 @@ class BinanceTracker extends EventEmitter {
 
     this.send({
       method: 'SUBSCRIBE',
-      params: tickers.map((ticker) => `${ticker}@trade`)
+      params: (force ? tickers : newTickers).map((ticker) => `${ticker}@trade`)
     });
 
-    this.tickersSubs.push(...tickers);
+    this.tickersSubs.push(...newTickers);
   }
 
   unsubscribeTicker (tickers) {
