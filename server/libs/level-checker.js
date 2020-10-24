@@ -198,6 +198,8 @@ const handleDataFrame = async (message, serverWs) => {
   const price = parseFloat(message.p);
   const timestamp = parseInt(message.T);
 
+  let logDataFrame = false;
+
   logger.info(`------>>> Data frame handling begin for ticker ${ticker} @ ${price} at ${new Date()} (${new Date().getTime()}) <<<------`);
 
   // Do not await
@@ -217,6 +219,8 @@ const handleDataFrame = async (message, serverWs) => {
 
   const activatedSignals = activateSignals(ticker, price, lastPrice);
   if (activatedSignals && activatedSignals.length) {
+    logDataFrame = true;
+
     logger.info(`Got signal activation for: ${JSON.stringify(activatedSignals)}`);
 
     // Do not await here, not necessary for data preame processing, all required data already updated in-place
@@ -254,6 +258,8 @@ const handleDataFrame = async (message, serverWs) => {
     logger.debug(`After filtering left triggered orders: ${JSON.stringify(triggered)}`);
 
     if (triggered.length) {
+      logDataFrame = true;
+
       const message = `Level trigger: for signal ${signal.id} levels triggered: ` +
           `${triggered.map(o => `${o.id}@${o.price}`).join(', ')} ` +
           `between price ${price} and last price ${lastPrice}`;
@@ -262,6 +268,12 @@ const handleDataFrame = async (message, serverWs) => {
 
     const orders = updateClosedAndRemaining(signal, triggered);
     logger.verbose(`Updated and closed orders: ${JSON.stringify(orders)}`);
+
+    if (logDataFrame) {
+      const msg = `Data frame processed successfully and it triggers changes: ${JSON.stringify(message)}`.substr(0, 1020);
+      logger.info(msg);
+      Log.log('info', msg);
+    }
 
     if (orders.length) {
       logger.info(`Notify clients about updated signal ${signal.id}`);

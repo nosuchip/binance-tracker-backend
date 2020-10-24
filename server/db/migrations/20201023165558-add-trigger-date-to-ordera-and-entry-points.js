@@ -3,8 +3,8 @@ module.exports = {
     const transaction = await queryInterface.sequelize.transaction();
 
     return Promise.all([
-      queryInterface.addColumn('Orders', 'triggerPrice', { type: Sequelize.DECIMAL(16, 8), allowNull: true }, { transaction }),
-      queryInterface.addColumn('EntryPoints', 'triggerPrice', { type: Sequelize.DECIMAL(16, 8), allowNull: true }, { transaction })
+      queryInterface.addColumn('Orders', 'triggerPrice', { type: Sequelize.DATE, allowNull: true }, { transaction }),
+      queryInterface.addColumn('EntryPoints', 'triggerPrice', { type: Sequelize.DATE, allowNull: true }, { transaction })
     ])
       .then(() => transaction.commit())
       .catch(() => transaction.rollback());
