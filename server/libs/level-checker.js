@@ -33,9 +33,14 @@ const getProfitability = (signal) => {
     return 0;
   }
 
-  return (signal.type === SignalType.Long)
+  const profitability = (signal.type === SignalType.Long)
     ? (signal.exitPrice / signal.price - 1) * 100
     : (signal.price / signal.exitPrice - 1) * 100;
+
+  logger.info(`Signal ${signal.id} profitability recalculation, signal type ${signal.type}` +
+    `current exit price ${signal.exitPrice}, entry price ${signal.price}, profitability ${profitability}`);
+
+  return profitability;
 };
 
 /**
@@ -71,17 +76,18 @@ const updateSparkline = function (ticker, price, timestamp) {
  * @param {Order[]} triggeredTP
  * @param {Order[]} triggeredSL
  */
-const updateClosedAndRemaining = (signal, orders) => {
+const updateClosedAndRemaining = (signal, orders, price) => {
   const ordersToUpdate = [];
 
   if (!orders || signal.status !== SignalStatus.Active || !signal.remaining) return;
 
   for (const order of orders) {
     order.closed = true;
+    order.triggerDate = new Date();
+    order.triggerPrice = price;
 
     if (signal.remaining - order.volume > 0) {
       order.closedVolume = order.volume;
-      order.triggerDate = new Date();
 
       signal.remaining -= order.volume;
       signal.lastPrice = order.price;
@@ -95,7 +101,6 @@ const updateClosedAndRemaining = (signal, orders) => {
       ordersToUpdate.push(order);
     } else if (signal.remaining) {
       order.closedVolume = signal.remaining;
-      order.triggerDate = new Date();
 
       signal.status = SignalStatus.Finished;
       signal.remaining = 0;
@@ -175,8 +180,9 @@ const activateSignals = (ticker, price, lastPrice) => {
       signalsToActivates.push(signal);
 
       activatedEntryPoint.triggerDate = new Date();
+      activatedEntryPoint.triggerPrice = price;
       EntryPoint
-        .update({ triggerDate: new Date() }, { where: { id: activatedEntryPoint.id } })
+        .update({ triggerDate: new Date(), triggerPrice: price }, { where: { id: activatedEntryPoint.id } })
         .catch(error => logger.error(`Unable to update entry point: ${error.message}`));
 
       const message = `Activation: activating signal ${signal.id} by entry points ${activatedEntryPoint.id} @ ` +
@@ -266,14 +272,8 @@ const handleDataFrame = async (message, serverWs) => {
       Log.log('info', message);
     }
 
-    const orders = updateClosedAndRemaining(signal, triggered);
+    const orders = updateClosedAndRemaining(signal, triggered, price);
     logger.verbose(`Updated and closed orders: ${JSON.stringify(orders)}`);
-
-    if (logDataFrame) {
-      const msg = `Data frame processed successfully and it triggers changes: ${JSON.stringify(message)}`.substr(0, 1020);
-      logger.info(msg);
-      Log.log('info', msg);
-    }
 
     if (orders.length) {
       logger.info(`Notify clients about updated signal ${signal.id}`);
@@ -306,6 +306,12 @@ const handleDataFrame = async (message, serverWs) => {
       ]);
     }
   });
+
+  if (logDataFrame) {
+    const msg = `Data frame processed successfully and it triggers changes (activation or level), binance data: ${JSON.stringify(message)}`.substr(0, 1020);
+    logger.info(msg);
+    Log.log('info', msg);
+  }
 
   logger.debug(`Begin awaiting for signals and orders update at ${new Date()} (${new Date().getTime()})`);
   await Promise.all(promises);

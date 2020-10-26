@@ -16,7 +16,8 @@ Order.init({
   type: { type: DataTypes.ENUM(Object.values(OrderTypes)) },
   closed: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false },
   closedVolume: { type: DataTypes.DECIMAL(4, 3), allowNull: true },
-  triggerPrice: { type: DataTypes.DECIMAL(16, 8), allowNull: true }
+  triggerPrice: { type: DataTypes.DECIMAL(16, 8), allowNull: true },
+  triggerDate: { type: DataTypes.DATE, allowNull: true }
 }, {
   sequelize,
   modelName: 'Order'
