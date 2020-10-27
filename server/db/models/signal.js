@@ -64,7 +64,12 @@ class Signal extends Model {
     const { skipComments, skipEntryPoints, skipOrders } = opts;
 
     const { count, rows: signals } = await Signal.findAndCountAll({
+      order: [
+        ['id', 'ASC']
+      ],
+
       ...query,
+
       include: [{
         model: Channel,
         as: 'channel'

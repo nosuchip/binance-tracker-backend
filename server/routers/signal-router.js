@@ -1,3 +1,4 @@
+const _ = require('lodash');
 const express = require('express');
 
 const { sequelize, Signal, Comment, EntryPoint, Order, Sequelize, Channel } = require('@db');
@@ -8,7 +9,13 @@ const utils = require('@base/utils');
 const router = express.Router();
 
 const getOrCreateChannel = async (name) => {
-  let channel = await Channel.findOne({ where: { name } });
+  let channel = { id: null };
+
+  if (!name) {
+    return channel;
+  }
+
+  channel = await Channel.findOne({ where: { name } });
 
   if (!channel) {
     channel = new Channel({ name });
@@ -106,7 +113,7 @@ router.post('/signals', validate(SignalSchema), async (req, res) => {
     channel
   } = rest;
 
-  // TODO: Find or create channel!!!
+  const channelModel = await getOrCreateChannel(channel ? channel.name : null);
 
   const created = await Signal.create(Signal.empty({
     userId: req.user.id,
@@ -122,7 +129,8 @@ router.post('/signals', validate(SignalSchema), async (req, res) => {
     post,
     status,
     profitability,
-    createdAt: date
+    createdAt: date,
+    channelId: channelModel.id
   }));
 
   await EntryPoint.bulkCreate(entryPoints.map(ep => ({
@@ -183,7 +191,7 @@ router.put('/signals/:signalId', validate(SignalSchema), async (req, res) => {
     }
   });
 
-  const channelModel = await getOrCreateChannel(channel ? channel.name : null);
+  const channelModel = await getOrCreateChannel(_.get(channel, 'name', null));
   payload.channelId = channelModel.id;
 
   const transaction = await sequelize.transaction();
