@@ -7,7 +7,7 @@ const logger = require('@base/logger');
 const { decode } = require('@base/libs/token');
 const { isPaid } = require('@base/libs/user');
 const { reloadSignalsFromDb, handleDataFrame, setWS } = require('@base/libs/level-checker');
-const { eventbus, EVENT_RELOAD_SIGNALS } = require('./libs/eventbus');
+const { eventbus, EVENT_RELOAD_SIGNALS, EVENT_REGRESSION_DATA } = require('./libs/eventbus');
 
 /*
   {
@@ -152,6 +152,8 @@ module.exports = async () => {
   const tickers = Array.from(new Set(signals.map(signal => signal.ticker)));
 
   binanceWs.subscribeTicker(tickers);
+
+  eventbus.on(EVENT_REGRESSION_DATA, message => handleDataFrame(message));
 
   serverWs.on('subscribe_signals', handleClientSubscribeSignals);
   serverWs.on('unsubscribe_signals', handleClientUnsubscribeSignals);

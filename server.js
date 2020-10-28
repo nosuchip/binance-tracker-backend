@@ -9,6 +9,7 @@ const http = require('http');
 const RateLimit = require('express-rate-limit');
 const logger = require('./server/logger');
 const wsServer = require('./server/websocket-server');
+const setupRegressionWebsocket = require('./server/websocket-regression');
 const config = require('./server/config');
 const { init: initDb } = require('./server/db');
 
@@ -66,7 +67,10 @@ const promiseApp = async () => {
 const promiseServer = async (app) => {
   return new Promise((resolve, reject) => {
     const server = http.Server(app);
+
     wsServer.init(server);
+    setupRegressionWebsocket();
+
     logger.info('Websockets started');
     resolve(server);
   });

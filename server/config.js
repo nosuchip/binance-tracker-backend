@@ -24,6 +24,7 @@ const config = {
   appKey: process.env.APP_KEY,
 
   port: process.env.PORT || 3000,
+  regressionWsPort: process.env.REGRESSION_WS_PORT,
 
   siteUrl: 'http://frontend.herokuapp.com/',
 

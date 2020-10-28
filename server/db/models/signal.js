@@ -7,7 +7,8 @@ const SignalStatus = {
   Delayed: 'delayed',
   Active: 'active',
   Finished: 'finished',
-  Cancelled: 'cancelled'
+  Cancelled: 'cancelled',
+  Regression: 'regression'
 };
 
 const SignalType = {

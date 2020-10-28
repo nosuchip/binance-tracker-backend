@@ -1,3 +1,11 @@
+/**
+ * Test WS server aimed to help debug server part and replace original Binance. When server connected to test WS
+ *    provider (this module) it begins to send data exactly the same way as Binance does.
+ *
+ * Usage: node binance-stub-ws/ws-stub-server.js CSV_FILE
+ * Example: `node binance-stub-ws/ws-stub-server.js ../../stuff/ADA-BNB.csv`
+ */
+
 const uuid = require('uuid');
 const WebSocket = require('ws');
 const _ = require('lodash');
