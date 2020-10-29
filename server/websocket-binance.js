@@ -4,8 +4,8 @@ const logger = require('./logger');
 const WebSocket = require('ws');
 const config = require('./config');
 
-const DATA_CHECK_INTERVAL_MS = 10000; // 1 second
-const MAX_DATA_CHECK_INTERVAL_MS = 30000; // 25 seconds
+const DATA_CHECK_INTERVAL_MS = 60000;
+const MAX_DATA_CHECK_INTERVAL_MS = 240000;
 
 class BinanceTracker extends EventEmitter {
   constructor (uri) {
