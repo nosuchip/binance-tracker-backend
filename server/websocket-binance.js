@@ -4,8 +4,8 @@ const logger = require('./logger');
 const WebSocket = require('ws');
 const config = require('./config');
 
-const DATA_CHECK_INTERVAL_MS = 60000;
-const MAX_DATA_CHECK_INTERVAL_MS = 240000;
+const DATA_CHECK_INTERVAL_MS = parseInt(process.env.DATA_CHECK_INTERVAL_MS);
+const MAX_DATA_CHECK_INTERVAL_MS = parseInt(process.env.MAX_DATA_CHECK_INTERVAL_MS);
 
 class BinanceTracker extends EventEmitter {
   constructor (uri) {
@@ -49,6 +49,10 @@ class BinanceTracker extends EventEmitter {
   }
 
   restartDataTimer () {
+    if (!DATA_CHECK_INTERVAL_MS || !MAX_DATA_CHECK_INTERVAL_MS) {
+      logger.debug('DATA_CHECK_INTERVAL_MS or MAX_DATA_CHECK_INTERVAL_MS empty, data check timer disabled');
+    }
+
     if (this.dataCheckTimer) {
       clearTimeout(this.dataCheckTimer);
     }
