@@ -3,6 +3,7 @@ const ReconnectingWebsocket = require('reconnecting-websocket');
 const logger = require('./logger');
 const WebSocket = require('ws');
 const config = require('./config');
+const { safeTicker } = require('./libs/ticker');
 
 const DATA_CHECK_INTERVAL_MS = parseInt(process.env.DATA_CHECK_INTERVAL_MS);
 const MAX_DATA_CHECK_INTERVAL_MS = parseInt(process.env.MAX_DATA_CHECK_INTERVAL_MS);
@@ -98,6 +99,8 @@ class BinanceTracker extends EventEmitter {
       tickers = [tickers];
     }
 
+    tickers = tickers.map(ticker => safeTicker(ticker));
+
     const newTickers = tickers
       .map((ticker) => ticker.toLowerCase())
       .filter((ticker) => !this.tickersSubs.includes(ticker));
@@ -116,6 +119,8 @@ class BinanceTracker extends EventEmitter {
     if (!Array.isArray(tickers)) {
       tickers = [tickers];
     }
+
+    tickers = tickers.map(ticker => safeTicker(ticker));
 
     tickers = tickers
       .map((ticker) => ticker.toLowerCase())

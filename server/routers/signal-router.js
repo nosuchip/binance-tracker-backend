@@ -5,6 +5,7 @@ const { sequelize, Signal, Comment, EntryPoint, Order, Sequelize, Channel } = re
 const Op = Sequelize.Op;
 const { validate, SignalSchema, BulkSignalSchema, CommentSchema } = require('../validation');
 const utils = require('@base/utils');
+const { safeTicker } = require('@base/libs/ticker');
 
 const router = express.Router();
 
@@ -117,7 +118,7 @@ router.post('/signals', validate(SignalSchema), async (req, res) => {
 
   const created = await Signal.create(Signal.empty({
     userId: req.user.id,
-    ticker,
+    ticker: safeTicker(ticker),
     title: title || ticker,
     price,
     commentable,
@@ -190,6 +191,8 @@ router.put('/signals/:signalId', validate(SignalSchema), async (req, res) => {
       payload[key] = value;
     }
   });
+
+  payload.ticker = safeTicker(payload.ticker);
 
   const channelModel = await getOrCreateChannel(_.get(channel, 'name', null));
   payload.channelId = channelModel.id;
@@ -283,7 +286,7 @@ router.post('/signals/bulk', validate(BulkSignalSchema), async (req, res) => {
       channel
     } = rest;
 
-    // TODO: Find or create channel!!!
+    const channelModel = await getOrCreateChannel(channel);
 
     const created = await Signal.create(Signal.empty({
       userId: req.user.id,
@@ -299,7 +302,8 @@ router.post('/signals/bulk', validate(BulkSignalSchema), async (req, res) => {
       post,
       status,
       profitability: profitability || 0,
-      createdAt: date
+      createdAt: date,
+      channelId: channelModel.id
     }));
 
     createdIds.push(created.id);

@@ -145,7 +145,12 @@ module.exports = async () => {
     reloadSignalsFromDb();
   });
 
-  binanceWs.on('open', () => reloadSignalsFromDb());
+  binanceWs.on('open', () => {
+    reloadSignalsFromDb();
+  });
+  binanceWs.on('close', () => {
+    console.log('>>>>>> BINANCE CLOSED CONNECTIONN');
+  });
   binanceWs.on('trade', (message) => handleDataFrame(message));
 
   const signals = await sequelize.query('SELECT id, ticker, price FROM Signals', { raw: true, type: Sequelize.QueryTypes.SELECT });
