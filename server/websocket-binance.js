@@ -50,7 +50,9 @@ class BinanceTracker extends EventEmitter {
 
   restartDataTimer () {
     if (!DATA_CHECK_INTERVAL_MS || !MAX_DATA_CHECK_INTERVAL_MS) {
-      logger.debug('DATA_CHECK_INTERVAL_MS or MAX_DATA_CHECK_INTERVAL_MS empty, data check timer disabled');
+      logger.silly(`DATA_CHECK_INTERVAL_MS=${DATA_CHECK_INTERVAL_MS} or MAX_DATA_CHECK_INTERVAL_MS=${MAX_DATA_CHECK_INTERVAL_MS} empty, data check timer disabled`);
+
+      return;
     }
 
     if (this.dataCheckTimer) {
