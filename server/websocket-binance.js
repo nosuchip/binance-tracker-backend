@@ -105,11 +105,17 @@ class BinanceTracker extends EventEmitter {
       .map((ticker) => ticker.toLowerCase())
       .filter((ticker) => !this.tickersSubs.includes(ticker));
 
-    logger.info(`Binance.subscribeTicker ${JSON.stringify(tickers)}`);
+    tickers = force ? tickers : newTickers;
+
+    if (tickers.length) {
+      logger.info(`Binance.subscribeTicker ${JSON.stringify(tickers)}`);
+    } else {
+      logger.info(`Binance.subscribeTicker attempted to subscribe with empty tickers list ${JSON.stringify(tickers)}, skipping`);
+    }
 
     this.send({
       method: 'SUBSCRIBE',
-      params: (force ? tickers : newTickers).map((ticker) => `${ticker}@trade`)
+      params: (tickers).map((ticker) => `${ticker}@trade`)
     });
 
     this.tickersSubs.push(...newTickers);
