@@ -13,11 +13,10 @@ const config = {
     dialect: 'mysql',
 
     dialectOptions: { decimalNumbers: true },
-
+    // logging: false,
     pool: {
       max: 5,
-      min: 0,
-      acquire: 30000,
+      min: 2,
       idle: 10000
     }
   },

@@ -1,4 +1,5 @@
 const { sequelize, Sequelize, checkConnection } = require('./database');
+const logger = require('@base/logger');
 
 const { User } = require('./models/user');
 const { Signal, SignalStatus, SignalType } = require('./models/signal');
@@ -10,26 +11,24 @@ const { History } = require('./models/history');
 const { Channel } = require('./models/channel');
 const { Log } = require('./models/log');
 
-// const { withCache } = require('./cache');
-
 const { associate } = require('./models/associations');
 
 const init = async () => {
   await associate();
-  // await sequelize.sync({ force: true });
+
+  try {
+    logger.info('Initializing DB connection and checking for result...');
+    await checkConnection();
+    logger.info('DB connected');
+  } catch (error) {
+    logger.error(`DB connection fail: ${error.toString()}`);
+  }
 };
 
 module.exports = {
   sequelize,
   Sequelize,
   checkConnection,
-
-  // User: withCache(User),
-  // Signal: withCache(Signal),
-  // Post: withCache(Post),
-  // Comment: withCache(Comment),
-  // EntryPoint: withCache(EntryPoint),
-  // Order: withCache(Order),
 
   User,
   Signal,

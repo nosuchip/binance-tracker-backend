@@ -2,6 +2,9 @@ const { DataTypes, Model } = require('sequelize');
 const { sequelize } = require('../database');
 const { afterCreate, afterUpdate, afterDestroy } = require('@db/hooks/signal-hooks');
 const { Channel } = require('./channel');
+const { EntryPoint } = require('./entrypoint');
+const { Order } = require('./order');
+const { Comment } = require('./comment');
 
 const SignalStatus = {
   Delayed: 'delayed',
@@ -36,59 +39,63 @@ class Signal extends Model {
     };
   }
 
-  static async findOneWithRefs (query) {
-    const signal = await Signal.findOne({
-      ...query,
-      include: [{
-        model: Channel,
-        as: 'channel'
-      }]
-    });
-    const comments = await signal.getComments();
-    const entryPoints = await signal.getEntryPoints();
-    const orders = await signal.getOrders();
-
-    const takeProfitOrders = orders.filter(order => order.type === 'take profit');
-    const stopLossOrders = orders.filter(order => order.type === 'stop loss');
-
-    return {
-      signal,
-      comments,
-      entryPoints,
-      orders,
-      takeProfitOrders,
-      stopLossOrders
-    };
-  }
-
   static async findManyWithRefs (query, opts = {}) {
-    const { skipComments, skipEntryPoints, skipOrders } = opts;
+    const { skipComments, skipEntryPoints, skipOrders, plain } = opts;
 
-    const { count, rows: signals } = await Signal.findAndCountAll({
+    const include = [{
+      model: Channel,
+      as: 'channel'
+    }];
+
+    if (!skipComments) {
+      include.push({
+        model: Comment,
+        as: 'comments'
+      });
+    }
+
+    if (!skipEntryPoints) {
+      include.push({
+        model: EntryPoint,
+        as: 'entryPoints'
+      });
+    }
+
+    if (!skipOrders) {
+      include.push({
+        model: Order,
+        as: 'orders'
+      });
+    }
+
+    query = {
       order: [
         ['id', 'ASC']
       ],
 
+      distinct: true,
+
       ...query,
 
-      include: [{
-        model: Channel,
-        as: 'channel'
-      }]
+      include
+    };
+
+    const { count, rows: signals } = await Signal.findAndCountAll(query);
+
+    const results = signals.map(signal => {
+      const takeProfitOrders = signal.orders.filter(order => order.type === 'take profit');
+      const stopLossOrders = signal.orders.filter(order => order.type === 'stop loss');
+
+      return {
+        signal: plain ? signal.get() : signal,
+        channel: plain ? signal.comments.map(c => c.get) : signal.comments,
+        comments: plain ? signal.comments.map(c => c.get) : signal.comments,
+        entryPoints: plain ? signal.entryPoints.map(ep => ep.get()) : signal.entryPoints,
+        orders: plain ? signal.orders.map(o => o.get()) : signal.orders,
+        takeProfitOrders: plain ? takeProfitOrders.map(o => o.get()) : takeProfitOrders,
+        stopLossOrders: plain ? stopLossOrders.map(o => o.get()) : stopLossOrders
+      };
     });
-
-    const results = await Promise.all(
-      signals.map(signal => Promise.all([
-        skipComments ? [] : signal.getComments(),
-        skipEntryPoints ? [] : signal.getEntryPoints(),
-        skipOrders ? [] : signal.getOrders()
-      ]).then(([comments, entryPoints, orders]) => {
-        const takeProfitOrders = orders.filter(order => order.type === 'take profit');
-        const stopLossOrders = orders.filter(order => order.type === 'stop loss');
-
-        return { signal, comments, entryPoints, orders, takeProfitOrders, stopLossOrders };
-      }))
-    );
 
     return { count, signals: results };
   }

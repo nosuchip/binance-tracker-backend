@@ -67,20 +67,21 @@ router.get('/signals', async (req, res) => {
 router.get('/signals/:signalId', async (req, res) => {
   const { signalId } = req.params;
 
-  const { signal, comments, entryPoints, takeProfitOrders, stopLossOrders } = await Signal.findOneWithRefs({
+  const { signals: [{ signal, comments, entryPoints, orders, takeProfitOrders, stopLossOrders }] } = await Signal.findManyWithRefs({
     where: {
       id: signalId
     }
-  });
+  }, { plain: true });
 
   const channels = await Channel.findAll({});
 
   res.json({
     success: true,
     signal: {
-      ...signal.get(),
+      ...signal,
       comments,
       entryPoints,
+      orders,
       takeProfitOrders,
       stopLossOrders
     },
@@ -148,7 +149,7 @@ router.post('/signals', validate(SignalSchema), async (req, res) => {
     type: order.type
   })));
 
-  const signal = await Signal.findOneWithRefs({
+  const { signals: [signal] } = await Signal.findManyWithRefs({
     where: {
       id: created.id
     }
@@ -156,13 +157,7 @@ router.post('/signals', validate(SignalSchema), async (req, res) => {
 
   res.json({
     success: true,
-    signal: {
-      ...signal.signal.get(),
-      comments: signal.comments,
-      entryPoints: signal.entryPoints,
-      takeProfitOrders: signal.takeProfitOrders,
-      stopLossOrders: signal.stopLossOrders
-    }
+    signal
   });
 });
 
@@ -211,7 +206,7 @@ router.put('/signals/:signalId', validate(SignalSchema), async (req, res) => {
       .then(() => Order.bulkCreate([...takeProfitOrders, ...stopLossOrders]), { transaction })
   ]);
 
-  const updated = await Signal.findOneWithRefs({
+  const { signals: [updated] } = await Signal.findManyWithRefs({
     where: {
       id: signalId
     }
@@ -219,13 +214,7 @@ router.put('/signals/:signalId', validate(SignalSchema), async (req, res) => {
 
   res.json({
     success: true,
-    signal: {
-      ...updated.signal.get(),
-      comments: updated.comments,
-      entryPoints: updated.entryPoints,
-      takeProfitOrders: updated.takeProfitOrders,
-      stopLossOrders: updated.stopLossOrders
-    }
+    signal: updated
   });
 });
 

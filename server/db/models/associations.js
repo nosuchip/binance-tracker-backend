@@ -16,8 +16,8 @@ const associate = async () => {
   });
 
   Signal.belongsTo(Channel, {
-    onDelete: 'SET NULL',
     as: 'channel',
+    onDelete: 'SET NULL',
     foreignKey: {
       name: 'channelId',
       allowNull: true
@@ -25,6 +25,7 @@ const associate = async () => {
   });
 
   Signal.hasMany(EntryPoint, {
+    as: 'entryPoints',
     onDelete: 'CASCADE',
     foreignKey: {
       name: 'signalId',
@@ -33,6 +34,7 @@ const associate = async () => {
   });
 
   Signal.hasMany(Order, {
+    as: 'orders',
     onDelete: 'CASCADE',
     foreignKey: {
       name: 'signalId',
@@ -41,6 +43,7 @@ const associate = async () => {
   });
 
   Signal.hasMany(Comment, {
+    as: 'comments',
     onDelete: 'CASCADE',
     foreignKey: {
       name: 'signalId',

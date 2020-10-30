@@ -4,7 +4,8 @@ const { sequelize } = require('../database');
 class Log extends Model {
   static async log (level, message, meta = {}) {
     const data = { level, message, meta: JSON.stringify(meta), timestamp: new Date() };
-    return Log.create(data);
+    return Log.create(data)
+      .catch(error => console.error(`Unable to insert log record ${JSON.stringify(message)} into logs:`, error));
   }
 }
 

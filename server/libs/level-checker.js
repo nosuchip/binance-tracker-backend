@@ -49,6 +49,35 @@ const findFirstBetween = (list, bottom, top, getter = null) => {
   return found;
 };
 
+const loadSignals = async (query) => {
+  let { count, signals } = await Signal.findManyWithRefs(query, { skipComments: true });
+
+  signals = signals.map(({ signal, entryPoints, takeProfitOrders, stopLossOrders }) => {
+    signal = signal.get();
+
+    signal.entryPoints = _.chain(entryPoints)
+      .map(item => item.get())
+      .sortBy('price')
+      .value();
+
+    signal.takeProfitOrders = _.chain(takeProfitOrders)
+      .filter(order => !order.closed)
+      .map(item => item.get())
+      .sortBy('price')
+      .value();
+
+    signal.stopLossOrders = _.chain(stopLossOrders)
+      .filter(order => !order.closed)
+      .map(item => item.get())
+      .sortBy('price')
+      .value();
+
+    return signal;
+  });
+
+  return { count, signals };
+};
+
 class LevelChecker {
   constructor ({ types } = {}) {
     if (!Array.isArray(types)) {
@@ -70,39 +99,16 @@ class LevelChecker {
     };
   }
 
-  async reloadSignalsFromDb () {
-    const { count, signals } = await Signal.findManyWithRefs({
-      where: {
-        status: {
-          [Sequelize.Op.in]: this.types
-        }
-      }
-    }, { skipComments: true });
+  async reloadSignalsFromDb (signalsOverride) {
+    let count, signals;
 
-    const plain = signals.map(({ signal, entryPoints, takeProfitOrders, stopLossOrders }) => {
-      signal = signal.get();
+    if (signalsOverride) {
+      ({ count, signals } = signalsOverride);
+    } else {
+      ({ count, signals } = loadSignals({ where: { status: { [Sequelize.Op.in]: this.types } } }));
+    }
 
-      signal.entryPoints = _.chain(entryPoints)
-        .map(item => item.get())
-        .sortBy('price')
-        .value();
-
-      signal.takeProfitOrders = _.chain(takeProfitOrders)
-        .filter(order => !order.closed)
-        .map(item => item.get())
-        .sortBy('price')
-        .value();
-
-      signal.stopLossOrders = _.chain(stopLossOrders)
-        .filter(order => !order.closed)
-        .map(item => item.get())
-        .sortBy('price')
-        .value();
-
-      return signal;
-    });
-
-    this.signalsCache = _.groupBy(plain, 'ticker');
+    this.signalsCache = _.groupBy(signals, 'ticker');
 
     logger.info(
       `reloadSignalsFromDb:: updated ${count} signals, tickers: ${Object.keys(this.signalsCache).join(',')} ` +
@@ -403,10 +409,22 @@ const realSignalProcessor = new LevelChecker({
 });
 
 const reloadSignalsFromDb = async () => {
-  return Promise.all([
-    regressionSignalProcessor.reloadSignalsFromDb(),
-    realSignalProcessor.reloadSignalsFromDb()
-  ]);
+  const types = [SignalStatus.Regression, SignalStatus.Delayed, SignalStatus.Active];
+  const { signals } = await loadSignals({ where: { status: { [Sequelize.Op.in]: types } } });
+
+  const regressionSignals = [];
+  const realSignals = [];
+
+  signals.forEach(signal => {
+    if (signal.type === SignalStatus.Regression) {
+      regressionSignals.push(signal);
+    } else {
+      realSignals.push(signal);
+    }
+  });
+
+  regressionSignalProcessor.reloadSignalsFromDb({ count: regressionSignals.length, signals: regressionSignals });
+  realSignalProcessor.reloadSignalsFromDb({ count: realSignals.length, signals: realSignals });
 };
 
 const handleDataFrame = (message) => {
