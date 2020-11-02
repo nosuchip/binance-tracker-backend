@@ -41,7 +41,8 @@ function setupRegressionWebsocket () {
   const socket = new WebSocket.Server({ port: config.regressionWsPort });
 
   socket.on('connection', (ws) => {
-    ws.send(serialize('connected'));
+    logger.info('Regression websocket connected');
+    ws.send(serialize('regression connected'));
     ws.on('message', onMessage);
   });
 }

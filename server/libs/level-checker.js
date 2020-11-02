@@ -99,6 +99,18 @@ class LevelChecker {
     };
   }
 
+  filterSignalsToActivate (ticker) {
+    throw new Error('filterSignalsToActivate must be overriden');
+  }
+
+  filterSignalsToCheckOrders (ticker) {
+    throw new Error('filterSignalsToCheckOrders must be overriden');
+  }
+
+  updatedSignalActivationStatus (signal) {
+    throw new Error('updatedSignalActivationStatus must be overriden');
+  }
+
   async reloadSignalsFromDb (signalsOverride) {
     let count, signals;
 
@@ -180,14 +192,14 @@ class LevelChecker {
    * @param {Order[]} triggeredTP
    * @param {Order[]} triggeredSL
    */
-  updateClosedAndRemaining (signal, orders, price) {
+  updateClosedAndRemaining (signal, orders, price, now) {
     const ordersToUpdate = [];
 
-    if (!orders || signal.status !== SignalStatus.Active || !signal.remaining) return;
+    if (!orders || !signal.remaining) return;
 
     for (const order of orders) {
       order.closed = true;
-      order.triggerDate = new Date();
+      order.triggerDate = now || new Date();
       order.triggerPrice = price;
 
       if (signal.remaining - order.volume > 0) {
@@ -230,11 +242,11 @@ class LevelChecker {
    * @param {Number}    price         Current price for ticker
    * @param {Number}    lastPrice     Previous price for ticker
    */
-  activateSignals (ticker, price, lastPrice) {
+  activateSignals (ticker, price, lastPrice, now) {
     const signalsToActivates = []; // { id: X, price: Y }
 
-    // Activate only signals whose ticker come in data frame and that are Delayed
-    const signals = (this.signalsCache[ticker] || []).filter(signal => signal.status === SignalStatus.Delayed);
+    // Activate only signals whose ticker come in data frame
+    const signals = this.filterSignalsToActivate(ticker);
 
     if (!signals || !signals.length) {
       return signalsToActivates;
@@ -244,15 +256,20 @@ class LevelChecker {
       const activatedEntryPoint = findFirstBetween(signal.entryPoints, lastPrice, price, ep => ep.price);
 
       if (activatedEntryPoint) {
-        signal.status = SignalStatus.Active;
+        signal.status = this.updatedSignalActivationStatus(signal);
         signal.price = activatedEntryPoint.price;
         signal.lastPrice = activatedEntryPoint.price;
         signalsToActivates.push(signal);
 
-        activatedEntryPoint.triggerDate = new Date();
+        activatedEntryPoint.triggerDate = now || new Date();
         activatedEntryPoint.triggerPrice = price;
         EntryPoint
-          .update({ triggerDate: new Date(), triggerPrice: price }, { where: { id: activatedEntryPoint.id } })
+          .update({
+            triggerDate: activatedEntryPoint.triggerDate,
+            triggerPrice: activatedEntryPoint.triggerPrice
+          }, {
+            where: { id: activatedEntryPoint.id }
+          })
           .catch(error => logger.error(`Unable to update entry point: ${error.message}`));
 
         const message = `Activation: activating signal ${signal.id} by entry points ${activatedEntryPoint.id} @ ` +
@@ -273,6 +290,7 @@ class LevelChecker {
     const ticker = message.s;
     const price = parseFloat(message.p);
     const timestamp = parseInt(message.T);
+    const date = new Date(timestamp * 1000);
 
     let logDataFrame = false;
 
@@ -293,14 +311,13 @@ class LevelChecker {
       return;
     }
 
-    const activatedSignals = this.activateSignals(ticker, price, lastPrice);
+    const activatedSignals = this.activateSignals(ticker, price, lastPrice, date);
     if (activatedSignals && activatedSignals.length) {
       logDataFrame = true;
 
       logger.info(`Got signal activation for: ${JSON.stringify(activatedSignals)}`);
 
-      // Do not await here, not necessary for data preame processing, all required data already updated in-place
-      Signal.activateMany(activatedSignals);
+      await Signal.activateMany(activatedSignals);
 
       signalsToSend.push(...activatedSignals.map(s => ({
         ...s,
@@ -310,9 +327,9 @@ class LevelChecker {
     }
 
     const type = price > lastPrice ? 'long' : (price < lastPrice ? 'short' : '-');
-    logger.verbose(`For ${ticker} dynamic changed to type ${type}`);
+    logger.debug(`For ${ticker} dynamic changed to type ${type}`);
 
-    const signalsToCheck = (this.signalsCache[ticker] || []).filter(signal => signal.status === SignalStatus.Active);
+    const signalsToCheck = this.filterSignalsToCheckOrders(ticker);
 
     const promises = [];
 
@@ -342,7 +359,7 @@ class LevelChecker {
         Log.log('info', message);
       }
 
-      const orders = this.updateClosedAndRemaining(signal, triggered, price);
+      const orders = this.updateClosedAndRemaining(signal, triggered, price, date);
       logger.verbose(`Updated and closed orders: ${JSON.stringify(orders)}`);
 
       if (orders.length) {
@@ -395,18 +412,51 @@ class LevelChecker {
   }
 }
 
+class RealSignalsLevelChecker extends LevelChecker {
+  constructor () {
+    super({ types: [SignalStatus.Delayed, SignalStatus.Active] });
+  }
+
+  filterSignalsToActivate (ticker) {
+    return (this.signalsCache[ticker] || []).filter(signal => signal.status === SignalStatus.Delayed);
+  }
+
+  filterSignalsToCheckOrders (ticker) {
+    return (this.signalsCache[ticker] || []).filter(signal => signal.status === SignalStatus.Active);
+  }
+
+  updatedSignalActivationStatus (signal) {
+    return SignalStatus.Active;
+  }
+}
+
+class RegressionSignalsLevelChecker extends LevelChecker {
+  constructor () {
+    super({ types: [SignalStatus.Regression] });
+  }
+
+  filterSignalsToActivate (ticker) {
+    return (this.signalsCache[ticker] || []).filter(signal => signal.status === SignalStatus.Regression && !signal.price);
+  }
+
+  filterSignalsToCheckOrders (ticker) {
+    // We do not change status of regression signals so only way to determine it is active is to check price
+    return (this.signalsCache[ticker] || []).filter(signal => signal.status === SignalStatus.Regression && signal.price);
+  }
+
+  updatedSignalActivationStatus (signal) {
+    return SignalStatus.Regression;
+  }
+}
+
 const setWS = (websocketClallbacks) => {
   Object.keys(websocketClallbacks).forEach(key => {
     ws[key] = websocketClallbacks[key];
   });
 };
 
-const regressionSignalProcessor = new LevelChecker({
-  types: [SignalStatus.Regression]
-});
-const realSignalProcessor = new LevelChecker({
-  types: [SignalStatus.Delayed, SignalStatus.Active]
-});
+const regressionSignalProcessor = new RegressionSignalsLevelChecker();
+const realSignalProcessor = new RealSignalsLevelChecker();
 
 const reloadSignalsFromDb = async () => {
   const types = [SignalStatus.Regression, SignalStatus.Delayed, SignalStatus.Active];
@@ -416,7 +466,7 @@ const reloadSignalsFromDb = async () => {
   const realSignals = [];
 
   signals.forEach(signal => {
-    if (signal.type === SignalStatus.Regression) {
+    if (signal.status === SignalStatus.Regression) {
       regressionSignals.push(signal);
     } else {
       realSignals.push(signal);

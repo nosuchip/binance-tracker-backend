@@ -153,7 +153,7 @@ module.exports = async () => {
   });
   binanceWs.on('trade', (message) => handleDataFrame(message));
 
-  const signals = await sequelize.query('SELECT id, ticker, price FROM Signals', { raw: true, type: Sequelize.QueryTypes.SELECT });
+  const signals = await sequelize.query('SELECT id, ticker, price FROM Signals WHERE Status <> \'regression\'', { raw: true, type: Sequelize.QueryTypes.SELECT });
   const tickers = Array.from(new Set(signals.map(signal => signal.ticker)));
 
   binanceWs.subscribeTicker(tickers);
@@ -165,5 +165,5 @@ module.exports = async () => {
   serverWs.on('subscribe_sparklines', handleClientSubscribeSparklines);
   serverWs.on('unsubscribe_sparklines', handleClientUnsubscribeSparklines);
 
-  eventbus.emit(EVENT_RELOAD_SIGNALS);
+  // eventbus.emit(EVENT_RELOAD_SIGNALS);
 };

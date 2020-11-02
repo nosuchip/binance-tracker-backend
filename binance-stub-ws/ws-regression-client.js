@@ -9,9 +9,22 @@ const WebSocket = require('ws');
 const csv = require('csv-parser');
 const fs = require('fs');
 
-const timeout = async (t = 200) => {
+const timeout = async (t = 50) => {
   return new Promise(resolve => setTimeout(() => resolve(), t));
 };
+
+// const timeout = async () => {
+//   process.stdin.setRawMode(true);
+//   return new Promise(resolve => process.stdin.once('data', data => {
+//     const byteArray = [...data];
+//     if (byteArray.length > 0 && byteArray[0] === 3) {
+//       console.log('^C');
+//       process.exit(1);
+//     }
+//     process.stdin.setRawMode(false);
+//     resolve();
+//   }));
+// };
 
 const loadData = async () => {
   const [_1, _2, _3, csvFile] = process.argv;
@@ -50,7 +63,7 @@ const iterateData = async (rows, ws) => {
     ws.send(JSON.stringify({
       ticker,
       price: price.toString(),
-      date: Math.round(new Date(date).getTime() / 1000)
+      date: new Date(date).getTime()
     }));
 
     await timeout();

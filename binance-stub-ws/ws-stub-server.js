@@ -68,7 +68,7 @@ const parseArgs = async () => {
 
     fs.createReadStream(csvFile)
       .pipe(csv({
-        headers: ['ticker', 'price', 'comment'],
+        headers: ['ticker', 'price', 'date', 'comment'],
         skipLines: 1
       }))
       .on('data', (data) => {

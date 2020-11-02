@@ -1,5 +1,5 @@
 const { DataTypes, Model } = require('sequelize');
-const { sequelize } = require('../database');
+const { sequelize, Sequelize } = require('../database');
 const { afterCreate, afterUpdate, afterDestroy } = require('@db/hooks/signal-hooks');
 const { Channel } = require('./channel');
 const { EntryPoint } = require('./entrypoint');
@@ -101,9 +101,9 @@ class Signal extends Model {
   }
 
   static async activateMany (signalPriceList) {
-    return Promise.all(signalPriceList.map(({ id, price }) => Signal.update(
-      { status: SignalStatus.Active, price, pastPrice: price },
-      { where: { status: SignalStatus.Delayed, id } }
+    return Promise.all(signalPriceList.map(({ id, price, status }) => Signal.update(
+      { status: status || SignalStatus.Active, price, pastPrice: price },
+      { where: { status: { [Sequelize.Op.ne]: SignalStatus.Active }, id } }
     )));
   }
 }
