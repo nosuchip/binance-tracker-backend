@@ -26,6 +26,29 @@ const getOrCreateChannel = async (name) => {
   return channel;
 };
 
+const getSignalResponse = async (signalId) => {
+  const { signals: [{ signal, comments, entryPoints: ep, orders, takeProfitOrders: tp, stopLossOrders: sl }] } = await Signal.findManyWithRefs({
+    where: {
+      id: signalId
+    }
+  }, { plain: true });
+
+  const channels = await Channel.findAll({});
+
+  return {
+    success: true,
+    signal: {
+      ...signal,
+      comments,
+      entryPoints: ep,
+      orders,
+      takeProfitOrders: tp,
+      stopLossOrders: sl
+    },
+    channels
+  };
+};
+
 router.get('/signals', async (req, res) => {
   const { page, perPage, filter } = utils.unpackQuery(req);
 
@@ -67,26 +90,8 @@ router.get('/signals', async (req, res) => {
 router.get('/signals/:signalId', async (req, res) => {
   const { signalId } = req.params;
 
-  const { signals: [{ signal, comments, entryPoints, orders, takeProfitOrders, stopLossOrders }] } = await Signal.findManyWithRefs({
-    where: {
-      id: signalId
-    }
-  }, { plain: true });
-
-  const channels = await Channel.findAll({});
-
-  res.json({
-    success: true,
-    signal: {
-      ...signal,
-      comments,
-      entryPoints,
-      orders,
-      takeProfitOrders,
-      stopLossOrders
-    },
-    channels
-  });
+  const response = await getSignalResponse(signalId);
+  res.json(response);
 });
 
 router.post('/signals', validate(SignalSchema), async (req, res) => {
@@ -149,24 +154,16 @@ router.post('/signals', validate(SignalSchema), async (req, res) => {
     type: order.type
   })));
 
-  const { signals: [signal] } = await Signal.findManyWithRefs({
-    where: {
-      id: created.id
-    }
-  });
-
-  res.json({
-    success: true,
-    signal
-  });
+  const response = await getSignalResponse(created.id);
+  res.json(response);
 });
 
 router.put('/signals/:signalId', validate(SignalSchema), async (req, res) => {
   const { signalId } = req.params;
 
-  const signal = await Signal.findOne({ where: { id: signalId } });
+  const existing = await Signal.findOne({ where: { id: signalId } });
 
-  if (!signal) {
+  if (!existing) {
     return res.status(404).json({ success: false, error: 'Signal not found' });
   }
 
@@ -206,16 +203,8 @@ router.put('/signals/:signalId', validate(SignalSchema), async (req, res) => {
       .then(() => Order.bulkCreate([...takeProfitOrders, ...stopLossOrders]), { transaction })
   ]);
 
-  const { signals: [updated] } = await Signal.findManyWithRefs({
-    where: {
-      id: signalId
-    }
-  });
-
-  res.json({
-    success: true,
-    signal: updated
-  });
+  const response = await getSignalResponse(signalId);
+  res.json(response);
 });
 
 router.delete('/signals/:signalId', async (req, res) => {
@@ -255,6 +244,7 @@ router.post('/signals/bulk', validate(BulkSignalSchema), async (req, res) => {
       entryPoints = [],
       takeProfitOrders = [],
       stopLossOrders = [],
+      channel,
       ...rest
     } = payload;
 
@@ -271,11 +261,10 @@ router.post('/signals/bulk', validate(BulkSignalSchema), async (req, res) => {
       date,
       post,
       status,
-      profitability,
-      channel
+      profitability
     } = rest;
 
-    const channelModel = await getOrCreateChannel(channel);
+    const channelModel = await getOrCreateChannel(channel.name);
 
     const created = await Signal.create(Signal.empty({
       userId: req.user.id,
@@ -302,6 +291,14 @@ router.post('/signals/bulk', validate(BulkSignalSchema), async (req, res) => {
       price: ep.price,
       comment: ep.comment
     })));
+
+    takeProfitOrders.forEach(order => {
+      order.type = 'take profit';
+    });
+
+    stopLossOrders.forEach(order => {
+      order.type = 'stop loss';
+    });
 
     await Order.bulkCreate([...takeProfitOrders, ...stopLossOrders].map(order => ({
       signalId: created.id,
