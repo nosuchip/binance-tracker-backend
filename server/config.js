@@ -8,16 +8,23 @@ const config = {
 
   binanceUri: process.env.BINANCE_WS_URI,
 
-  databaseUri: process.env.MYSQL_URI,
+  databaseUri: process.env.DATABASE_URI,
   databaseOpts: {
-    dialect: 'mysql',
+    dialect: 'postgres',
     logging: false,
-    dialectOptions: { decimalNumbers: true },
-    pool: {
-      max: 5,
-      min: 2,
-      idle: 10000
+
+    dialectOptions: {
+      ssl: { rejectUnauthorized: false },
+      quoteIdentifiers: true
     }
+
+    // Mysql
+    // dialectOptions: { decimalNumbers: true },
+    // pool: {
+    //   max: 5,
+    //   min: 2,
+    //   idle: 10000
+    // }
   },
 
   appKey: process.env.APP_KEY,

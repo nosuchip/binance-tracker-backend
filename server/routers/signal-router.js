@@ -75,7 +75,7 @@ router.get('/signals', async (req, res) => {
     stopLossOrders: data.stopLossOrders
   }));
 
-  const available = await sequelize.query('SELECT id FROM Signals' + (unprivilegedUser ? ' WHERE paid <> TRUE' : ''), {
+  const available = await sequelize.query('SELECT id FROM "Signals"' + (unprivilegedUser ? ' WHERE paid <> TRUE' : ''), {
     raw: true,
     type: Sequelize.QueryTypes.SELECT
   });

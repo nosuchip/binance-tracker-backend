@@ -1,5 +1,5 @@
 const { ConnectionString } = require('connection-string');
-const parsed = new ConnectionString(process.env.MYSQL_URI);
+const parsed = new ConnectionString(process.env.DATABASE_URI);
 
 const resolver = {
   get: () => ({
@@ -8,7 +8,15 @@ const resolver = {
     database: parsed.path[0],
     host: parsed.hostname,
     port: parsed.port,
-    dialect: 'mysql'
+    dialect: parsed.protocol,
+
+    // HEroku Posgres-specific
+    dialectOptions: {
+      ssl: {
+          rejectUnauthorized: false
+      }
+    },
+    quoteIdentifiers: true, // set case-insensitive
   })
 };
 

@@ -12,9 +12,9 @@ module.exports = {
     await queryInterface.addColumn('Signals', 'channelId', { type: Sequelize.INTEGER, allowNull: true });
 
     await queryInterface.sequelize.query(`
-      INSERT INTO Channels (name, createdAt, updatedAt)
-      SELECT channel, createdAt, updatedAt
-      FROM Signals
+      INSERT INTO "Channels" (name, "createdAt", "updatedAt")
+      SELECT channel, "createdAt", "updatedAt"
+      FROM "Signals"
     `);
 
     await queryInterface.addConstraint('Signals', {
@@ -30,8 +30,8 @@ module.exports = {
     });
 
     await queryInterface.sequelize.query(`
-      UPDATE Signals s
-      SET channelId = (SELECT id FROM Channels c WHERE s.channel = c.name)
+      UPDATE "Signals" s
+      SET "channelId" = (SELECT id FROM "Channels" c WHERE s.channel = c.name)
     `);
 
     await queryInterface.removeColumn('Signals', 'channel');
@@ -40,8 +40,8 @@ module.exports = {
   down: async (queryInterface, Sequelize) => {
     await queryInterface.addColumn('Signals', 'channel', { type: Sequelize.STRING(100), allowNull: true });
     await queryInterface.sequelize.query(`
-      UPDATE Signals s
-      INNER JOIN Channels c ON s.channelId = c.id
+      UPDATE "Signals" s
+      INNER JOIN Channels c ON s."channelId" = c.id
       SET s.channel = c.name
     `);
     await queryInterface.removeColumn('Signals', 'channelId');

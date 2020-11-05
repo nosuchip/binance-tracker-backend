@@ -3,7 +3,7 @@ module.exports = {
     return queryInterface.createTable('Signals', {
       id: { type: Sequelize.INTEGER, primaryKey: true, autoIncrement: true, allowNull: false },
       userId: { type: Sequelize.INTEGER, allowNull: true },
-      status: { type: Sequelize.ENUM('delayed', 'active', 'finished', 'cancelled'), allowNull: false },
+      status: { type: Sequelize.ENUM('delayed', 'active', 'finished', 'cancelled', 'regression'), allowNull: false },
       profitability: { type: Sequelize.DECIMAL(16, 8), allowNull: false },
       ticker: { type: Sequelize.STRING(50), allowNull: false },
       title: { type: Sequelize.STRING(50), allowNull: false },
