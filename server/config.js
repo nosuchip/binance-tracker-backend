@@ -15,7 +15,8 @@ const config = {
 
     dialectOptions: {
       ssl: { rejectUnauthorized: false },
-      quoteIdentifiers: true
+      quoteIdentifiers: true,
+      decimalNumbers: true
     }
 
     // Mysql
