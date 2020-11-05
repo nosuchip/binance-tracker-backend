@@ -6,6 +6,7 @@ const Op = Sequelize.Op;
 const { validate, SignalSchema, BulkSignalSchema, CommentSchema } = require('../validation');
 const utils = require('@base/utils');
 const { safeTicker } = require('@base/libs/ticker');
+const { SignalStatus } = require('@base/db/models/signal');
 
 const router = express.Router();
 
@@ -167,6 +168,20 @@ router.put('/signals/:signalId', validate(SignalSchema), async (req, res) => {
     return res.status(404).json({ success: false, error: 'Signal not found' });
   }
 
+  const signalTriggered = (
+    existing.status === SignalStatus.Active ||
+    existing.status === SignalStatus.Finished ||
+    existing.price ||
+    existing.remaining !== 1
+  );
+
+  if (signalTriggered) {
+    return res.status(409).json({
+      success: false,
+      error: 'Signal already has price field set, i.e. it is active, finished or regression in progressm so it cannot be edited anymore'
+    });
+  }
+
   const payload = {};
 
   const {
@@ -178,8 +193,16 @@ router.put('/signals/:signalId', validate(SignalSchema), async (req, res) => {
     ...rest
   } = req.body;
 
+  const nonOverwritableFields = [
+    'profitability',
+    'exitPrice',
+    'price',
+    'lastPrice',
+    'remaining'
+  ];
+
   Object.entries(rest).forEach(([key, value]) => {
-    if (typeof value !== 'undefined') {
+    if (typeof value !== 'undefined' && !nonOverwritableFields.includes(key)) {
       payload[key] = value;
     }
   });
@@ -191,17 +214,28 @@ router.put('/signals/:signalId', validate(SignalSchema), async (req, res) => {
 
   const transaction = await sequelize.transaction();
 
-  await Promise.all([
-    Signal.update(payload, { where: { id: signalId } }, { transaction }),
+  const promises = [Signal.update(payload, { where: { id: signalId } }, { transaction })];
 
-    EntryPoint
-      .destroy({ where: { signalId } }, { transaction })
-      .then(() => EntryPoint.bulkCreate(entryPoints), { transaction }),
+  if (!signalTriggered) {
+    // NOTE: Important that ALL EP are removed on signal edit and it makes unavailable to edit already  triggered signal
+    // because EPs will be reset. To maintain correct work it isrequired to check what EPs are removed, what EPs are added
+    // and work only with changed ones.
+    // Another case - user potentially can remove triggered EP. It makle sense to forbid EP, TP, SL edit for signal that
+    // is not `Delayed` or has price or has remaining !== 1
 
-    Order
-      .destroy({ where: { signalId } }, { transaction })
-      .then(() => Order.bulkCreate([...takeProfitOrders, ...stopLossOrders]), { transaction })
-  ]);
+    // NOTE: For now code below is not working due the `signalTriggered` checked above and block entire signal editing
+
+    promises.push(
+      EntryPoint
+        .destroy({ where: { signalId } }, { transaction })
+        .then(() => EntryPoint.bulkCreate(entryPoints), { transaction }),
+      Order
+        .destroy({ where: { signalId } }, { transaction })
+        .then(() => Order.bulkCreate([...takeProfitOrders, ...stopLossOrders]), { transaction })
+    );
+  }
+
+  await Promise.all(promises);
 
   const response = await getSignalResponse(signalId);
   res.json(response);

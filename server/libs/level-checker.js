@@ -274,7 +274,7 @@ class LevelChecker {
 
         const message = `Activation: activating signal ${signal.id} by entry points ${activatedEntryPoint.id} @ ` +
                     `${activatedEntryPoint.price} between price ${price} and last price ${lastPrice}`;
-        logger.debug(message);
+        logger.info(message);
         Log.log('info', message);
       } else {
         logger.debug(`Activation: for signal ${signal.id} no entry points were hit between price ${price} ` +
@@ -356,6 +356,7 @@ class LevelChecker {
         const message = `Level trigger: for signal ${signal.id} levels triggered: ` +
             `${triggered.map(o => `${o.id}@${o.price}`).join(', ')} ` +
             `between price ${price} and last price ${lastPrice}`;
+        logger.info(message);
         Log.log('info', message);
       }
 

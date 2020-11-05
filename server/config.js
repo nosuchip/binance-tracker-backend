@@ -11,9 +11,8 @@ const config = {
   databaseUri: process.env.MYSQL_URI,
   databaseOpts: {
     dialect: 'mysql',
-
+    logging: false,
     dialectOptions: { decimalNumbers: true },
-    // logging: false,
     pool: {
       max: 5,
       min: 2,
