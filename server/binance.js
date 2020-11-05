@@ -153,7 +153,7 @@ module.exports = async () => {
   });
   binanceWs.on('trade', (message) => handleDataFrame(message));
 
-  const signals = await sequelize.query('SELECT id, ticker, price FROM "Signals" WHERE "Status" <> \'regression\'', { raw: true, type: Sequelize.QueryTypes.SELECT });
+  const signals = await sequelize.query('SELECT id, ticker, price FROM "Signals" WHERE status <> \'regression\'', { raw: true, type: Sequelize.QueryTypes.SELECT });
   const tickers = Array.from(new Set(signals.map(signal => signal.ticker)));
 
   binanceWs.subscribeTicker(tickers);
