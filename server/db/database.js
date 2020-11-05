@@ -3,6 +3,8 @@ const { Sequelize } = require('sequelize');
 const config = require('../config');
 const logger = require('../logger');
 
+Sequelize.postgres.DECIMAL.parse = (value) => parseFloat(value);
+
 const sequelize = new Sequelize(config.databaseUri, {
   ...config.databaseOpts
 });
